@@ -24,7 +24,16 @@ CORRELATION_GROUPS: dict[str, dict[str, list[str]]] = {
         # both are "who's actually on the floor and how the role shifts as a result"
         "role_shift_chain": ["wnba_usage_role_elasticity", "wnba_lineup_on_off"],
     },
-    "nfl": {},
+    "nfl": {
+        # pressure rate is the RESULT; OL/DL win rate is the MECHANISM behind it
+        "pressure_chain": ["nfl_qb_pressure_stress", "nfl_ol_vs_dl"],
+        # all three are downstream of "this defense's coverage scheme creates/limits separation"
+        "coverage_chain": ["nfl_coverage_matchup", "nfl_coverage_scheme_vs_qb", "nfl_man_vs_zone_route"],
+        # both are "how much opportunity does this player get"
+        "volume_chain": ["nfl_expected_volume", "nfl_red_zone_role"],
+        # game script sets rushing volume; box count sets rushing efficiency -- same rushing-environment root
+        "run_game_chain": ["nfl_rb_run_fit", "nfl_game_script"],
+    },
     "mlb": {},
     "soccer": {},
 }
