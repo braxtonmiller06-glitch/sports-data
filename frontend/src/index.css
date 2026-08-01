@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* Dark, sportsbook-analytics palette. Placeholder -- swap freely. */
+  --color-ink-950: #0a0d12;
+  --color-ink-900: #0e1218;
+  --color-ink-800: #131a22;
+  --color-ink-700: #1b2430;
+  --color-ink-600: #263241;
+  --color-ink-500: #3a4a5c;
+  --color-ink-400: #5b6b7d;
+  --color-ink-300: #8b98a6;
+  --color-ink-200: #c2ccd6;
+  --color-ink-100: #e6ebf0;
+  --color-ink-50: #f5f7f9;
+
+  --color-edge-600: #0f9d63;
+  --color-edge-500: #16c172;
+  --color-edge-400: #3fdb8f;
+  --color-edge-300: #7cebb4;
+
+  --color-warn-500: #e2b93b;
+  --color-danger-500: #e5484d;
+}
+
+@layer base {
+  body {
+    @apply bg-ink-950 text-ink-100 antialiased;
+    font-feature-settings: "cv11", "salt";
+  }
+}
