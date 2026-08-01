@@ -74,6 +74,8 @@ class ValidatePickTests(unittest.TestCase):
             "sport": "mlb",
             "market_type": "moneyline",
             "subject": "Yankees",
+            "home_team": "Yankees",
+            "away_team": "Red Sox",
             "selection_side": "home",
             "three_way": False,
             "decimal_odds": 1.91,

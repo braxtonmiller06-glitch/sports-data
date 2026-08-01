@@ -42,7 +42,7 @@ VALID_RESULTS = {"WIN", "LOSS", "PUSH"}
 _THREE_WAY_MARKET_TYPES = {"moneyline", "1x2"}
 
 REQUIRED_FIELDS = [
-    "sport", "market_type", "subject", "selection_side", "three_way",
+    "sport", "market_type", "subject", "home_team", "away_team", "selection_side", "three_way",
     "decimal_odds", "model_probability", "market_probability", "edge",
     "confidence", "verdict", "settles_at",
 ]
@@ -141,6 +141,8 @@ def build_pick_row(play: dict, games_by_sport: dict[str, list[dict]]) -> dict:
         "sport": sport,
         "market_type": play["market_type"],
         "subject": play["subject"],
+        "home_team": play["home_team"],
+        "away_team": play["away_team"],
         "external_event_id": external_event_id,
         "line": play.get("line"),
         "selection_side": selection_side,

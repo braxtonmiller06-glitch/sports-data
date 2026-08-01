@@ -16,6 +16,8 @@ create table if not exists picks (
     sport text not null,
     market_type text not null,
     subject text not null,
+    home_team text not null,
+    away_team text not null,
 
     external_event_id text,
 
@@ -33,6 +35,12 @@ create table if not exists picks (
 
     settles_at timestamptz not null,
     created_at timestamptz not null default now(),
+
+    -- Populated later by atlas/closing_lines.py, ~15 min before game start.
+    -- Both null until then -- that's the documented reason clv_pct (and the
+    -- site's CLV column) is empty until that job has run for a given pick.
+    closing_decimal_odds numeric,
+    clv_pct numeric,
 
     graded boolean not null default false,
     result text,
