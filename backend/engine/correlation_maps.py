@@ -42,12 +42,21 @@ CORRELATION_GROUPS: dict[str, dict[str, list[str]]] = {
         # park factor amplifies whatever the quality of contact already is
         "contact_environment_chain": ["mlb_ballpark_weather", "mlb_batted_ball_quality"],
     },
-    "soccer": {},
+    "soccer": {
+        # both are about the attacking end: creating chances vs converting them
+        "chance_conversion_chain": ["soccer_chance_quality_xg", "soccer_finishing_regression"],
+        # both are physical/travel condition signals
+        "condition_chain": ["soccer_fixture_congestion", "soccer_home_away_travel"],
+    },
 }
 
 
+_SOCCER_LEAGUE_SPORTS = {"mls", "epl", "la_liga", "serie_a", "bundesliga", "ligue_1"}
+
+
 def causal_group_for(sport: str, filter_id: str) -> str | None:
-    groups = CORRELATION_GROUPS.get(sport, {})
+    lookup_sport = "soccer" if sport in _SOCCER_LEAGUE_SPORTS else sport
+    groups = CORRELATION_GROUPS.get(lookup_sport, {})
     for group_id, members in groups.items():
         if filter_id in members:
             return group_id
