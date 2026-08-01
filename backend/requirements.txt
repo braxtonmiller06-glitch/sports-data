@@ -6,3 +6,4 @@ python-dotenv>=1.0
 httpx>=0.27
 nfl_data_py>=0.3
 pandas>=2.0
+pybaseball>=2.2

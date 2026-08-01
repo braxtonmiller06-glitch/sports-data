@@ -34,7 +34,14 @@ CORRELATION_GROUPS: dict[str, dict[str, list[str]]] = {
         # game script sets rushing volume; box count sets rushing efficiency -- same rushing-environment root
         "run_game_chain": ["nfl_rb_run_fit", "nfl_game_script"],
     },
-    "mlb": {},
+    "mlb": {
+        # both are "will this pitcher generate swings and misses" -- lineup-specific vs. overall
+        "stuff_chain": ["mlb_arsenal_vs_lineup", "mlb_whiff_profile"],
+        # command drives pitch efficiency, which drives how long the starter stays in
+        "workload_chain": ["mlb_command_bb_risk", "mlb_the_leash"],
+        # park factor amplifies whatever the quality of contact already is
+        "contact_environment_chain": ["mlb_ballpark_weather", "mlb_batted_ball_quality"],
+    },
     "soccer": {},
 }
 

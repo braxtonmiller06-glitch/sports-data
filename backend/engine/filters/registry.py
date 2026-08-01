@@ -1,11 +1,12 @@
 """sport -> list of Filter classes. Populated as each sport's filters are built."""
+from backend.engine.filters.mlb import REGISTRY as MLB_FILTERS
 from backend.engine.filters.nfl import REGISTRY as NFL_FILTERS
 from backend.engine.filters.wnba import REGISTRY as WNBA_FILTERS
 
 SPORT_FILTERS: dict[str, list] = {
     "wnba": WNBA_FILTERS,
     "nfl": NFL_FILTERS,
-    "mlb": [],
+    "mlb": MLB_FILTERS,
     "soccer": [],
 }
 
