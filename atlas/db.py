@@ -60,3 +60,23 @@ def record_closing_line(pick_id: int, closing_decimal_odds: float, clv_pct: floa
     if not response.data:
         raise RuntimeError(f"record_closing_line returned no data for pick_id {pick_id}")
     return response.data[0]
+
+
+def get_ungraded_settled_picks(now_iso: str) -> list[dict]:
+    """Picks whose settles_at has passed but that haven't been graded yet."""
+    client = get_client()
+    response = client.table("picks").select("*").eq("graded", False).lte("settles_at", now_iso).execute()
+    return response.data
+
+
+def mark_graded(pick_id: int, result: str, graded_at_iso: str) -> dict:
+    client = get_client()
+    response = (
+        client.table("picks")
+        .update({"graded": True, "result": result, "graded_at": graded_at_iso})
+        .eq("id", pick_id)
+        .execute()
+    )
+    if not response.data:
+        raise RuntimeError(f"mark_graded returned no data for pick_id {pick_id}")
+    return response.data[0]
