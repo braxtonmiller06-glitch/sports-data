@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classroom-Equivalent Delivery Engine — 28 TAC §19.1009(h)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E4E2DC;
+  --card:#F2F1ED;
+  --ink:#1A1D21;
+  --ink-2:#4A5058;
+  --rule:#C2BEB5;
+  --seal:#7A2E2E;
+  --pass:#2C5A4C;
+  --pending:#A8721F;
+  --lock:#6B7078;
+  --shadow:0 1px 0 rgba(26,29,33,.06), 0 2px 10px rgba(26,29,33,.05);
+  --display:"Zilla Slab",Georgia,serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+
+/* ---------- masthead ---------- */
+.masthead{
+  border-bottom:1px solid var(--rule);
+  background:var(--card);
+  padding:14px 20px;
+  display:flex;flex-wrap:wrap;gap:14px;
+  align-items:baseline;justify-content:space-between;
+}
+.wordmark{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.01em}
+.wordmark span{color:var(--seal)}
+.cite-badge{
+  font-family:var(--mono);font-size:11px;color:var(--ink-2);
+  border:1px solid var(--rule);border-radius:2px;padding:3px 7px;background:var(--paper);
+}
+.speed{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
+.speed b{color:var(--seal);font-weight:600}
+
+/* ---------- layout ---------- */
+.shell{max-width:1180px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;align-items:start}
+@media(max-width:940px){.shell{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:3px;box-shadow:var(--shadow)}
+.card-hd{
+  padding:11px 16px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.card-hd h2{
+  margin:0;font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);
+}
+.card-bd{padding:18px 20px}
+
+/* ---------- content pane ---------- */
+.eyebrow{font-family:var(--mono);font-size:11px;color:var(--seal);letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px}
+.sec-title{font-family:var(--display);font-weight:600;font-size:26px;line-height:1.2;margin:0 0 14px;letter-spacing:-.01em}
+.prose p{margin:0 0 13px;max-width:66ch}
+.prose h3{font-family:var(--display);font-size:17px;font-weight:600;margin:20px 0 8px}
+.prose ul{margin:0 0 13px;padding-left:20px;max-width:64ch}
+.prose li{margin-bottom:5px}
+.statute{
+  border-left:3px solid var(--seal);background:rgba(122,46,46,.05);
+  padding:11px 14px;margin:0 0 14px;max-width:64ch;
+}
+.statute .src{font-family:var(--mono);font-size:11px;color:var(--seal);display:block;margin-bottom:4px}
+
+/* ---------- gate bar ---------- */
+.gate{
+  margin-top:20px;padding-top:16px;border-top:1px solid var(--rule);
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+}
+.gate-msg{font-size:13px;color:var(--ink-2);font-family:var(--mono)}
+.btn{
+  background:var(--ink);color:var(--card);border:1px solid var(--ink);
+  padding:9px 18px;border-radius:2px;font-weight:500;letter-spacing:.01em;
+}
+.btn:hover{background:#2C3138}
+.btn[disabled]{background:transparent;color:var(--lock);border-color:var(--rule);cursor:not-allowed}
+.btn-alt{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+.btn-alt:hover{background:var(--paper)}
+
+/* ---------- inquiry ---------- */
+.q{border-top:1px solid var(--rule);padding:16px 0}
+.q:first-of-type{border-top:none;padding-top:4px}
+.q-stem{font-weight:500;margin:0 0 10px;max-width:64ch}
+.q-num{font-family:var(--mono);font-size:11px;color:var(--ink-2);margin-right:7px}
+.opt{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--rule);
+  border-radius:2px;padding:9px 12px;margin-bottom:6px;max-width:64ch;line-height:1.4}
+.opt:hover:not([disabled]){border-color:var(--ink-2);background:#FAFAF8}
+.opt.sel{border-color:var(--ink);background:#FAFAF8;box-shadow:inset 3px 0 0 var(--ink)}
+.opt.right{border-color:var(--pass);background:rgba(44,90,76,.08);box-shadow:inset 3px 0 0 var(--pass)}
+.opt.wrong{border-color:var(--seal);background:rgba(122,46,46,.07);box-shadow:inset 3px 0 0 var(--seal)}
+.opt[disabled]{cursor:default}
+.rationale{
+  font-size:13.5px;margin:8px 0 0;padding:10px 12px;max-width:64ch;
+  background:var(--paper);border:1px solid var(--rule);border-radius:2px;
+}
+.rationale b{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:3px}
+.rationale.ok b{color:var(--pass)}
+.rationale.no b{color:var(--seal)}
+.verdict{padding:14px 16px;border-radius:2px;margin-bottom:18px;border:1px solid}
+.verdict.ok{border-color:var(--pass);background:rgba(44,90,76,.08)}
+.verdict.no{border-color:var(--seal);background:rgba(122,46,46,.07)}
+.verdict h3{margin:0 0 4px;font-family:var(--display);font-size:17px}
+.verdict p{margin:0;font-size:13.5px;color:var(--ink-2)}
+
+/* ---------- rail ---------- */
+.dial{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--rule)}
+.dial svg{flex:none}
+.dial-read{font-family:var(--mono);font-size:23px;font-weight:500;letter-spacing:-.02em;line-height:1}
+.dial-lab{font-size:11.5px;color:var(--ink-2);margin-top:5px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.dial-lab.idle{color:var(--pending);font-weight:500}
+.map{padding:14px 20px;border-bottom:1px solid var(--rule)}
+.map-row{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px}
+.pip{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--lock);flex:none}
+.pip.done{background:var(--pass);border-color:var(--pass)}
+.pip.now{background:var(--pending);border-color:var(--pending);box-shadow:0 0 0 3px rgba(168,114,31,.18)}
+.map-row.locked{color:var(--lock)}
+.map-row .m-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-row .m-s{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
+
+/* ---------- ledger : signature element ---------- */
+.ledger-wrap{padding:0}
+.ledger{max-height:330px;overflow-y:auto;font-family:var(--mono);font-size:11.5px}
+.led{display:grid;grid-template-columns:62px 1fr;gap:9px;padding:7px 20px;border-bottom:1px solid rgba(194,190,181,.5)}
+.led:last-child{border-bottom:none}
+.led-ts{color:var(--lock)}
+.led-ev{color:var(--ink);line-height:1.4}
+.led-cite{color:var(--ink-2);font-size:10.5px;display:block;margin-top:2px}
+.led.k-pass .led-ev{color:var(--pass)}
+.led.k-fail .led-ev{color:var(--seal)}
+.led.k-hold .led-ev{color:var(--pending)}
+.ledger-ft{padding:11px 20px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ledger-ft span{font-size:11.5px;color:var(--ink-2);font-family:var(--mono)}
+.mini{background:transparent;border:1px solid var(--rule);border-radius:2px;padding:5px 11px;font-size:12px;color:var(--ink)}
+.mini:hover{background:var(--paper)}
+
+/* ---------- modal ---------- */
+.scrim{position:fixed;inset:0;background:rgba(26,29,33,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal{background:var(--card);border:1px solid var(--rule);border-radius:3px;max-width:440px;width:100%;box-shadow:0 12px 40px rgba(26,29,33,.28)}
+.modal .card-bd{padding:22px 24px}
+.modal h2{font-family:var(--display);font-size:21px;margin:0 0 8px}
+.modal p{font-size:13.5px;color:var(--ink-2);margin:0 0 16px}
+.field{display:block;margin-bottom:13px}
+.field span{display:block;font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:5px}
+.field input{width:100%;padding:9px 11px;border:1px solid var(--rule);border-radius:2px;background:var(--paper);font-family:var(--body);font-size:14px;color:var(--ink)}
+.err{color:var(--seal);font-size:13px;margin:0 0 12px;font-weight:500}
+.note{font-size:12px;color:var(--ink-2);font-family:var(--mono);line-height:1.5;margin:14px 0 0;padding-top:12px;border-top:1px solid var(--rule)}
+
+/* ---------- certificate ---------- */
+.cert{border:2px solid var(--ink);padding:24px;background:var(--card)}
+.cert h2{font-family:var(--display);font-size:24px;margin:0 0 3px;text-align:center}
+.cert .sub{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--seal);margin-bottom:20px}
+.cert dl{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;margin:0;font-size:13.5px}
+.cert dt{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);padding-top:2px}
+.cert dd{margin:0}
+
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <div class="wordmark">Seat<span>·</span>Ledger</div>
+    <div style="font-size:12px;color:var(--ink-2);margin-top:2px">Classroom-equivalent delivery engine</div>
+  </div>
+  <div class="cite-badge">28 TAC §19.1009(h) · TX Dept. of Insurance</div>
+  <label class="speed">
+    <input type="checkbox" id="demoSpeed" checked>
+    <span><b>Demo speed</b> — compresses timers. Turn off before TDI review.</span>
+  </label>
+</header>
+
+<main class="shell">
+  <div>
+    <section class="card" id="pane" aria-live="polite"></section>
+  </div>
+
+  <aside>
+    <div class="card" style="margin-bottom:20px">
+      <div class="dial">
+        <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#C2BEB5" stroke-width="4"/>
+          <circle id="arc" cx="26" cy="26" r="22" fill="none" stroke="#A8721F" stroke-width="4"
+                  stroke-linecap="butt" stroke-dasharray="138.2" stroke-dashoffset="138.2"
+                  transform="rotate(-90 26 26)"/>
+        </svg>
+        <div>
+          <div class="dial-read" id="clock">00:00</div>
+          <div class="dial-lab" id="clockLab">Seat time accruing</div>
+        </div>
+      </div>
+      <div class="map" id="map"></div>
+      <div class="map" style="border-bottom:none;padding-top:12px">
+        <div class="map-row"><span class="m-s" style="flex:1">Identity re-check in</span><span class="m-s" id="idClock">—</span></div>
+        <div class="map-row"><span class="m-s" style="flex:1">Inquiry periods cleared</span><span class="m-s" id="ipCount">0</span></div>
+      </div>
+    </div>
+
+    <div class="card ledger-wrap">
+      <div class="card-hd"><h2>Compliance ledger</h2><span class="cite-badge" id="ledCount">0</span></div>
+      <div class="ledger" id="ledger"></div>
+      <div class="ledger-ft">
+        <span>Append-only · demo evidence</span>
+        <button class="mini" id="exportBtn">Export .csv</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div id="modalRoot"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   CONFIG — real vs demo cadence
+   Real: 15-minute sections => 4 inquiry periods/hour per (h)(2)(A)
+   ============================================================ */
+const REAL = { section: 15*60, identity: 60*60, idle: 90 };
+const DEMO = { section: 25,     identity: 55,    idle: 25 };
+let CFG = DEMO;
+
+const PASS_RATE = 0.70;          // (h)(2)(B)
+const MAX_ID_FAILS = 3;
+
+/* ============================================================
+   COURSE CONTENT
+   Placeholder body copy pending SME review. Structure is the
+   regulated part; prose is swappable.
+   ============================================================ */
+const SECTIONS = [
+  {
+    id:"S1",
+    unit:"Module 3 · Texas Personal Auto",
+    title:"Financial responsibility and minimum limits",
+    body:`
+      <p>Texas requires every driver to establish <em>financial responsibility</em>. Nearly all drivers
+      satisfy this by carrying a liability policy at or above the statutory minimum.</p>
+      <div class="statute"><span class="src">Minimum liability — 30/60/25</span>
+        $30,000 bodily injury per person · $60,000 bodily injury per accident · $25,000 property damage per accident.</div>
+      <p>The split-limit structure matters more than the numbers. The per-person figure caps what any single
+      injured claimant can recover for bodily injury. The per-accident figure caps the total across all
+      claimants, no matter how many there are. A three-claimant loss does not multiply the per-accident cap.</p>
+      <h3>Coverages that must be offered</h3>
+      <ul>
+        <li><b>Personal Injury Protection (PIP)</b> — must be offered on every policy and may only be declined
+        by the applicant in writing.</li>
+        <li><b>Uninsured / Underinsured Motorist (UM/UIM)</b> — same rule: offered by default, rejected only in writing.</li>
+      </ul>
+      <p>An adjuster who finds no signed rejection in the underwriting file should treat the coverage as
+      present. This is one of the most common coverage-verification errors in Texas auto claims.</p>
+      <h3>Physical damage</h3>
+      <p><b>Collision</b> responds to impact with another vehicle or object, including a single-vehicle
+      strike on a fixed object. <b>Other Than Collision</b> — commonly called comprehensive — responds to
+      theft, fire, hail, glass breakage, flood, and animal strikes. An animal strike is other-than-collision
+      even though it feels like an impact.</p>`,
+    sets:[
+      [
+        {q:"An insured carrying 30/60/25 is at fault in a crash injuring three occupants of the other vehicle. Each proves $28,000 in bodily injury damages. What is the most the liability coverage pays for bodily injury?",
+         o:["$84,000 — each claimant is within the per-person limit","$60,000 — the per-accident limit caps the total","$30,000 — the per-person limit applies to the loss","$25,000 — property damage limit controls"],a:1,
+         e:"Each claimant is individually under the $30,000 per-person cap, but the $60,000 per-accident limit caps the aggregate. The remaining $24,000 of proven damages is the insured's personal exposure."},
+        {q:"A Texas applicant does not want PIP. What must happen for the policy to issue without it?",
+         o:["Nothing — PIP is optional and need not be addressed","The applicant must reject it in writing","The agent notes the verbal declination in the file","PIP cannot be removed from a Texas policy"],a:1,
+         e:"PIP must be offered on every Texas auto policy and can only be removed by a written rejection. An unsigned file means the coverage is presumed in force."},
+        {q:"An insured strikes a deer on a rural highway. Which coverage responds?",
+         o:["Collision","Other Than Collision (comprehensive)","Liability","PIP"],a:1,
+         e:"Animal strikes fall under Other Than Collision in the personal auto policy, despite involving an impact."},
+        {q:"Which figure in a 30/60/25 policy is the property damage limit?",
+         o:["$30,000","$60,000","$25,000","There is no property damage limit in a split-limit policy"],a:2,
+         e:"Split limits read bodily-injury-per-person / bodily-injury-per-accident / property-damage-per-accident. The third figure is property damage."},
+        {q:"An adjuster reviewing a Texas auto file finds no signed UM/UIM rejection. The correct handling is to:",
+         o:["Deny UM/UIM — it was not purchased","Treat UM/UIM as in force absent a written rejection","Ask the insured whether they remember declining it","Refer the file to underwriting for a coverage opinion before acknowledging the claim"],a:1,
+         e:"UM/UIM is offered by operation of law and removable only by written rejection. Absent that document, the coverage applies."}
+      ],
+      [
+        {q:"Two claimants are injured in a loss caused by an insured with 30/60/25 limits. One proves $45,000 in bodily injury damages, the other $10,000. What does the liability coverage pay for bodily injury?",
+         o:["$55,000 — both are within the per-accident limit","$40,000 — the first claimant is capped at $30,000","$30,000 — the per-person limit caps the loss","$60,000 — the per-accident limit is paid in full"],a:1,
+         e:"The first claimant is limited to the $30,000 per-person cap; the second recovers $10,000 in full. The $40,000 total sits under the $60,000 per-accident limit, so that cap never binds."},
+        {q:"Which of these losses is covered under Collision rather than Other Than Collision?",
+         o:["Hail damage to the roof and hood","A tree limb falling on the parked vehicle","The insured backs into a loading dock","A windshield cracked by a road stone"],a:2,
+         e:"Impact with a fixed object is collision, even in a single-vehicle loss with no other party involved."},
+        {q:"The 'per accident' bodily injury limit in a split-limit auto policy functions as:",
+         o:["A per-claimant cap applied separately to each injured person","An aggregate cap on all bodily injury arising from one loss","An annual aggregate across the policy term","A sublimit that applies only when three or more claimants are involved"],a:1,
+         e:"It is the ceiling on total bodily injury payments for a single accident, regardless of claimant count."},
+        {q:"Personal Injury Protection in Texas primarily pays for:",
+         o:["Damage to the insured's vehicle","Medical expenses and a portion of lost income, without regard to fault","Liability owed to a third party","Rental reimbursement during repairs"],a:1,
+         e:"PIP is first-party no-fault coverage for medical expense and lost earnings; fault is not a condition of payment."},
+        {q:"An insured's vehicle is stolen from a parking garage. Which coverage responds?",
+         o:["Collision","Other Than Collision (comprehensive)","Liability","Uninsured Motorist property damage"],a:1,
+         e:"Theft is a named other-than-collision peril."}
+      ]
+    ]
+  },
+  {
+    id:"S2",
+    unit:"Module 1 · Texas Claim Handling Statutes",
+    title:"Prompt payment deadlines and the adjuster's duty",
+    body:`
+      <p>Texas puts hard clocks on claim handling. An adjuster who misses one exposes the carrier to
+      statutory penalty interest and attorney's fees — which is why these deadlines are examined heavily.</p>
+      <div class="statute"><span class="src">Prompt payment of claims — Tex. Ins. Code ch. 542, subch. B</span>
+        <b>15 days</b> to acknowledge the claim, commence the investigation, and request all items the carrier
+        reasonably needs.<br>
+        <b>15 business days</b> after receiving all requested items to accept or reject the claim in writing.<br>
+        <b>5 business days</b> after notice of acceptance to pay.</div>
+      <p>The second clock does not start until the requested items are actually in hand. This is why the
+      initial request must be complete: a carrier that dribbles out requests restarts nothing and simply
+      burns calendar.</p>
+      <h3>Good faith and fair dealing</h3>
+      <p>An adjuster is a fiduciary of the insurer, but owes the claimant a duty of reasonable, honest
+      dealing. Practically, that means investigating before denying, documenting the basis for every
+      coverage position, and not undervaluing a claim the file supports.</p>
+      <h3>Public adjusters</h3>
+      <p>A public insurance adjuster represents the <em>insured</em>, not the carrier, and is separately
+      licensed and bonded in Texas. A staff or independent adjuster who begins advocating for the
+      policyholder's valuation against their own principal has a conflict, not a virtue.</p>`,
+    sets:[
+      [
+        {q:"A Texas carrier receives notice of a claim on March 3. By when must it acknowledge the claim and commence its investigation?",
+         o:["Within 5 business days","Within 15 days","Within 15 business days","Within 30 days"],a:1,
+         e:"Chapter 542 sets 15 days to acknowledge, begin investigating, and request all reasonably needed items."},
+        {q:"The 15-business-day clock to accept or reject a claim begins when?",
+         o:["On the date of loss","On the date the claim is first reported","When the carrier has received all items it requested","When the insured retains counsel"],a:2,
+         e:"The acceptance/rejection clock runs from receipt of all requested items, which is why the initial request should be complete."},
+        {q:"After notifying the insured that the claim is accepted, the carrier must pay within:",
+         o:["5 business days","10 days","15 business days","30 days"],a:0,
+         e:"Payment is due within 5 business days of the notice of acceptance."},
+        {q:"Which adjuster represents the policyholder's interest rather than the carrier's?",
+         o:["Staff adjuster","Independent adjuster","Public insurance adjuster","Field adjuster"],a:2,
+         e:"A public insurance adjuster is retained by and advocates for the insured, and is separately licensed and bonded in Texas."},
+        {q:"An adjuster denies a claim on day 4 without contacting the insured or inspecting the loss. The clearest exposure is:",
+         o:["No exposure — the denial was issued well inside the 15-day window","Failure to conduct a reasonable investigation before denying","Violation of the 5-business-day payment rule","Unauthorized practice of public adjusting"],a:1,
+         e:"Speed does not cure an unreasonable investigation. Denying without investigating is the classic bad-faith fact pattern."}
+      ],
+      [
+        {q:"A carrier acknowledges a claim on day 12 but does not request supporting documents until day 26. Which requirement was missed?",
+         o:["None — acknowledgment inside 15 days satisfies the statute","The request for all reasonably needed items was also due within 15 days","The 5-business-day payment deadline","The 15-business-day acceptance deadline"],a:1,
+         e:"The 15-day obligation covers three things together: acknowledge, commence investigation, and request all reasonably needed items."},
+        {q:"An adjuster owes the insurer a fiduciary duty. What does that mean for the claimant?",
+         o:["The claimant is owed nothing beyond the policy terms","The claimant is still owed honest, reasonable dealing","The adjuster must advocate for the claimant's valuation","The adjuster becomes the claimant's representative once a dispute arises"],a:1,
+         e:"The fiduciary duty runs to the insurer, but Texas requires honest and reasonable treatment of the claimant."},
+        {q:"Which of these best describes the consequence of blowing a Chapter 542 deadline?",
+         o:["The claim is automatically deemed accepted at policy limits","The carrier may owe statutory penalty interest and attorney's fees","The adjuster's license is automatically suspended","The insured must file suit within 30 days or waive the violation"],a:1,
+         e:"The statutory remedy is penalty interest plus reasonable attorney's fees, which is what makes the deadlines commercially serious."},
+        {q:"A staff adjuster begins helping the insured build a higher valuation against their own employer's position. This is:",
+         o:["Best practice under good faith and fair dealing","A conflict of interest — that advocacy role belongs to a licensed public adjuster","Required once the insured disputes the estimate","Permitted if the adjuster documents it in the file"],a:1,
+         e:"Advocating for the insured's valuation is the public adjuster's licensed role. A carrier's adjuster owes fair dealing, not advocacy."},
+        {q:"Requesting all reasonably needed items in the initial 15-day contact matters because:",
+         o:["It shortens the policy's suit-limitation period","The acceptance clock does not start until the requested items are received","It waives the insured's duty to cooperate","It converts the claim to a public adjusting file"],a:1,
+         e:"Incomplete initial requests delay the start of the 15-business-day clock and waste calendar the carrier cannot recover."}
+      ]
+    ]
+  }
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  student:null,
+  idx:0,
+  view:"enroll",              // enroll | content | inquiry | result | complete | locked
+  accrued:0,                  // seconds accrued in current section
+  totalAccrued:0,
+  idle:false,
+  lastActivity:Date.now(),
+  sinceIdentity:0,
+  idFails:0,
+  progress:SECTIONS.map(()=>({cleared:false,attempts:0,set:0})),
+  ledger:[],
+  inquiry:null,
+  modal:null,
+  started:null
+};
+
+/* ============================================================
+   LEDGER — append-only
+   ============================================================ */
+function log(event,cite,kind){
+  S.ledger.push({t:new Date(),event,cite:cite||"",kind:kind||""});
+  paintLedger();
+}
+function hhmm(d){return d.toTimeString().slice(0,8)}
+function mmss(s){
+  const m=Math.floor(s/60),r=Math.floor(s%60);
+  return String(m).padStart(2,"0")+":"+String(r).padStart(2,"0");
+}
+function paintLedger(){
+  const el=document.getElementById("ledger");
+  el.innerHTML = S.ledger.slice().reverse().map(function(e){
+    return '<div class="led '+(e.kind?"k-"+e.kind:"")+'">'
+      +'<div class="led-ts">'+hhmm(e.t)+'</div>'
+      +'<div class="led-ev">'+e.event+(e.cite?'<span class="led-cite">'+e.cite+'</span>':'')+'</div>'
+      +'</div>';
+  }).join("");
+  document.getElementById("ledCount").textContent=S.ledger.length;
+}
+
+/* ============================================================
+   TIMER + IDLE
+   ============================================================ */
+setInterval(tick,1000);
+function tick(){
+  const idleFor=(Date.now()-S.lastActivity)/1000;
+  const nowIdle = idleFor > CFG.idle;
+
+  if(nowIdle && !S.idle && S.view==="content"){
+    S.idle=true;
+    log("Seat timer paused — no interaction detected","Time integrity control","hold");
+    openModal(idleModal());
+  }
+
+  if(S.view==="content" && !S.idle && document.visibilityState==="visible"){
+    S.accrued++; S.totalAccrued++; S.sinceIdentity++;
+    if(S.sinceIdentity>=CFG.identity){ S.sinceIdentity=0; challengeIdentity("periodic"); }
+  }
+  paintDial();
+}
+
+function paintDial(){
+  const need=CFG.section;
+  const pct=Math.min(1,S.accrued/need);
+  const arc=document.getElementById("arc");
+  arc.style.strokeDashoffset=String(138.2*(1-pct));
+  arc.setAttribute("stroke", pct>=1 ? "#2C5A4C" : "#A8721F");
+  document.getElementById("clock").textContent = mmss(Math.max(0,need-S.accrued));
+  const lab=document.getElementById("clockLab");
+  if(S.idle){ lab.textContent="Timer paused — idle"; lab.className="dial-lab idle"; }
+  else if(pct>=1){ lab.textContent="Section time satisfied"; lab.className="dial-lab"; }
+  else { lab.textContent="Seat time remaining"; lab.className="dial-lab"; }
+
+  const idLeft=Math.max(0,CFG.identity-S.sinceIdentity);
+  document.getElementById("idClock").textContent = S.student ? mmss(idLeft) : "—";
+  document.getElementById("ipCount").textContent =
+    S.progress.filter(function(p){return p.cleared}).length+" / "+SECTIONS.length;
+
+  const gb=document.getElementById("gateBtn");
+  if(gb && S.view==="content"){
+    const ok = pct>=1 && !S.idle;
+    gb.disabled=!ok;
+    const gm=document.getElementById("gateMsg");
+    if(gm) gm.textContent = ok
+      ? "Section time satisfied — inquiry period unlocked"
+      : (S.idle ? "Paused. Confirm you're present to resume." : "Inquiry period unlocks when section time is satisfied");
+  }
+}
+
+["mousemove","keydown","scroll","click","touchstart"].forEach(function(ev){
+  window.addEventListener(ev,function(){ S.lastActivity=Date.now(); },{passive:true});
+});
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="hidden" && S.view==="content"){
+    log("Tab hidden — accrual suspended","Time integrity control","hold");
+  }
+});
+document.getElementById("demoSpeed").addEventListener("change",function(e){
+  CFG = e.target.checked ? DEMO : REAL;
+  log("Cadence set to "+(e.target.checked?"DEMO":"PRODUCTION")
+      +" ("+(CFG.section/60).toFixed(2)+" min/section)","Operator setting — not a student control");
+  paintDial();
+});
+
+/* ============================================================
+   MAP
+   ============================================================ */
+function paintMap(){
+  document.getElementById("map").innerHTML = SECTIONS.map(function(s,i){
+    const p=S.progress[i];
+    const cls = p.cleared?"done":(i===S.idx?"now":"");
+    const rowCls = (i>S.idx && !p.cleared)?"map-row locked":"map-row";
+    const status = p.cleared ? "cleared" : (i===S.idx?"open":"locked");
+    return '<div class="'+rowCls+'"><span class="pip '+cls+'"></span>'
+      +'<span class="m-t">'+s.title+'</span><span class="m-s">'+status+'</span></div>';
+  }).join("");
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(html){
+  S.modal=true;
+  document.getElementById("modalRoot").innerHTML='<div class="scrim"><div class="modal"><div class="card-bd">'+html+'</div></div></div>';
+  const f=document.querySelector(".modal input,.modal button");
+  if(f) f.focus();
+}
+function closeModal(){ S.modal=null; document.getElementById("modalRoot").innerHTML=""; }
+
+function idleModal(){
+  return '<h2>Still with us?</h2>'
+    +'<p>Your seat timer is paused. Texas credit is based on time actually spent in the course, so we stop the clock when the screen goes quiet.</p>'
+    +'<button class="btn" onclick="resumeSeat()">I\'m here — resume</button>';
+}
+window.resumeSeat=function(){
+  S.idle=false; S.lastActivity=Date.now();
+  log("Student confirmed presence — timer resumed","Time integrity control");
+  closeModal(); paintDial();
+};
+
+const ID_QUESTIONS=[
+  {k:"pet",  label:"Name of your first pet"},
+  {k:"city", label:"City where you were born"},
+  {k:"emp",  label:"Your first employer"}
+];
+function challengeIdentity(reason){
+  const q=ID_QUESTIONS[Math.floor(Math.random()*ID_QUESTIONS.length)];
+  S.pendingId=q.k;
+  const why = reason==="entry" ? "on entry" : (reason==="exit" ? "on exit" : "periodic");
+  log("Identity challenge issued ("+why+")","§19.1009(h)(2)(G) — authenticate on entry, during, and exiting","hold");
+  openModal(
+    '<h2>Confirm it\'s you</h2>'
+    +'<p>Texas requires us to re-authenticate you on entry, periodically during the course, and on exit.</p>'
+    +'<label class="field"><span>'+q.label+'</span><input id="idAns" type="text" autocomplete="off"></label>'
+    +'<div id="idErr"></div>'
+    +'<button class="btn" onclick="submitIdentity()">Confirm</button>'
+    +'<p class="note">Attempt '+(S.idFails+1)+' of '+MAX_ID_FAILS+'. Three failures suspend the session and void unposted seat time.</p>'
+  );
+}
+window.submitIdentity=function(){
+  const val=(document.getElementById("idAns").value||"").trim().toLowerCase();
+  const expected=(S.student[S.pendingId]||"").trim().toLowerCase();
+  if(val && val===expected){
+    S.idFails=0; S.sinceIdentity=0;
+    log("Identity confirmed","§19.1009(h)(2)(G)","pass");
+    closeModal();
+    if(S.view==="exiting") finishCourse();
+    return;
+  }
+  S.idFails++;
+  log("Identity challenge failed ("+S.idFails+" of "+MAX_ID_FAILS+")","§19.1009(h)(2)(G)","fail");
+  if(S.idFails>=MAX_ID_FAILS){
+    S.view="locked";
+    log("Session suspended — authentication failed three times","§19.1009(h)(2)(G)","fail");
+    closeModal(); render(); return;
+  }
+  document.getElementById("idErr").innerHTML='<p class="err">That doesn\'t match what\'s on file. '+(MAX_ID_FAILS-S.idFails)+' attempt(s) left.</p>';
+  document.getElementById("idAns").value="";
+  document.getElementById("idAns").focus();
+};
+
+/* ============================================================
+   VIEWS
+   ============================================================ */
+function render(){
+  const pane=document.getElementById("pane");
+  if(S.view==="enroll")        pane.innerHTML=viewEnroll();
+  else if(S.view==="content")  pane.innerHTML=viewContent();
+  else if(S.view==="inquiry")  pane.innerHTML=viewInquiry();
+  else if(S.view==="result")   pane.innerHTML=viewResult();
+  else if(S.view==="complete") pane.innerHTML=viewComplete();
+  else if(S.view==="locked")   pane.innerHTML=viewLocked();
+  paintMap(); paintDial();
+}
+
+function viewEnroll(){
+  return '<div class="card-hd"><h2>Enrollment</h2><span class="cite-badge">One student per presentation · (h)(1)</span></div>'
+  +'<div class="card-bd">'
+  +'<p class="eyebrow">Texas All-Lines Adjuster · classroom equivalent</p>'
+  +'<h1 class="sec-title">Set up your identity checks</h1>'
+  +'<p style="max-width:62ch;color:var(--ink-2)">We\'ll ask you one of these at random on entry, about once an hour during the course, and again when you finish. Answers are compared exactly, so keep them simple.</p>'
+  +'<div style="max-width:420px;margin-top:18px">'
+  +'<label class="field"><span>Your full name</span><input id="e_name" type="text" placeholder="Jane Alvarez"></label>'
+  +'<label class="field"><span>Name of your first pet</span><input id="e_pet" type="text"></label>'
+  +'<label class="field"><span>City where you were born</span><input id="e_city" type="text"></label>'
+  +'<label class="field"><span>Your first employer</span><input id="e_emp" type="text"></label>'
+  +'<div id="enrollErr"></div>'
+  +'<button class="btn" onclick="enroll()">Begin course</button>'
+  +'</div></div>';
+}
+window.enroll=function(){
+  const g=function(id){return (document.getElementById(id).value||"").trim()};
+  const st={name:g("e_name"),pet:g("e_pet"),city:g("e_city"),emp:g("e_emp")};
+  if(!st.name||!st.pet||!st.city||!st.emp){
+    document.getElementById("enrollErr").innerHTML='<p class="err">Fill in all four fields — each one is a possible identity check.</p>';
+    return;
+  }
+  S.student=st; S.started=new Date();
+  log("Enrollment opened — "+st.name,"Single-student presentation · §19.1009(h)(1)");
+  S.view="content"; S.lastActivity=Date.now();
+  render();
+  challengeIdentity("entry");
+};
+
+function viewContent(){
+  const s=SECTIONS[S.idx];
+  return '<div class="card-hd"><h2>Section '+(S.idx+1)+' of '+SECTIONS.length+'</h2>'
+  +'<span class="cite-badge">'+(CFG===DEMO?"demo cadence":(CFG.section/60)+" min certified")+'</span></div>'
+  +'<div class="card-bd">'
+  +'<p class="eyebrow">'+s.unit+'</p>'
+  +'<h1 class="sec-title">'+s.title+'</h1>'
+  +'<div class="prose">'+s.body+'</div>'
+  +'<div class="gate">'
+  +'<span class="gate-msg" id="gateMsg">Inquiry period unlocks when section time is satisfied</span>'
+  +'<button class="btn" id="gateBtn" disabled onclick="startInquiry()">Open inquiry period</button>'
+  +'</div></div>';
+}
+
+window.startInquiry=function(){
+  const p=S.progress[S.idx];
+  const set=SECTIONS[S.idx].sets[p.set];
+  S.inquiry={answers:new Array(set.length).fill(null),graded:false};
+  S.view="inquiry";
+  log("Inquiry period opened — section "+(S.idx+1)+", question set "+String.fromCharCode(65+p.set),
+      "§19.1009(h)(2)(A) — four periods per certified hour");
+  render();
+};
+
+function viewInquiry(){
+  const p=S.progress[S.idx];
+  const set=SECTIONS[S.idx].sets[p.set];
+  const need=Math.ceil(set.length*PASS_RATE);
+  let h='<div class="card-hd"><h2>Inquiry period · set '+String.fromCharCode(65+p.set)+'</h2>'
+    +'<span class="cite-badge">'+need+' of '+set.length+' to advance</span></div><div class="card-bd">'
+    +'<p class="eyebrow">'+SECTIONS[S.idx].unit+'</p>'
+    +'<h1 class="sec-title">Check your mastery of this section</h1>'
+    +'<p style="color:var(--ink-2);max-width:62ch">Answer at least 70% correctly to move on. Miss the mark and you\'ll get a different set of questions on the same material.</p>';
+  set.forEach(function(q,i){
+    h+='<div class="q"><p class="q-stem"><span class="q-num">'+String(i+1).padStart(2,"0")+'</span>'+q.q+'</p>';
+    q.o.forEach(function(opt,j){
+      const sel=S.inquiry.answers[i]===j;
+      h+='<button class="opt'+(sel?" sel":"")+'" onclick="pick('+i+','+j+')">'+opt+'</button>';
+    });
+    h+='</div>';
+  });
+  const done=S.inquiry.answers.every(function(a){return a!==null});
+  h+='<div class="gate"><span class="gate-msg">'
+    +(done?"All questions answered":"Answer every question to submit")
+    +'</span><button class="btn" '+(done?"":"disabled")+' onclick="gradeInquiry()">Submit answers</button></div></div>';
+  return h;
+}
+window.pick=function(i,j){ S.inquiry.answers[i]=j; render(); };
+
+window.gradeInquiry=function(){
+  const p=S.progress[S.idx];
+  const set=SECTIONS[S.idx].sets[p.set];
+  let right=0;
+  set.forEach(function(q,i){ if(S.inquiry.answers[i]===q.a) right++; });
+  const pct=right/set.length;
+  const passed=pct>=PASS_RATE;
+  p.attempts++;
+  S.inquiry.graded=true; S.inquiry.right=right; S.inquiry.passed=passed;
+  log("Inquiry period scored "+right+"/"+set.length+" ("+Math.round(pct*100)+"%) — "+(passed?"advanced":"held"),
+      "§19.1009(h)(2)(B) — 70% required to proceed", passed?"pass":"fail");
+  if(passed){ p.cleared=true; }
+  else {
+    p.set = (p.set+1) % SECTIONS[S.idx].sets.length;
+    log("Alternate question set "+String.fromCharCode(65+p.set)+" loaded for retry",
+        "§19.1009(h)(2)(D)–(E) — different set on repeat","hold");
+  }
+  S.view="result"; render();
+};
+
+function viewResult(){
+  const p=S.progress[S.idx];
+  const setIdx = p.cleared ? p.set : (p.set-1+SECTIONS[S.idx].sets.length)%SECTIONS[S.idx].sets.length;
+  const set=SECTIONS[S.idx].sets[setIdx];
+  const passed=S.inquiry.passed, right=S.inquiry.right;
+  const last = S.idx===SECTIONS.length-1;
+  let h='<div class="card-hd"><h2>Inquiry results</h2><span class="cite-badge">'
+    +right+' of '+set.length+' · '+Math.round(right/set.length*100)+'%</span></div><div class="card-bd">';
+  h+='<div class="verdict '+(passed?"ok":"no")+'">'
+    +'<h3>'+(passed?"Section cleared":"Not there yet")+'</h3>'
+    +'<p>'+(passed
+      ? (last?"You've met the requirement for the final section.":"You can move to the next section.")
+      : "You need "+Math.ceil(set.length*PASS_RATE)+" of "+set.length+". Review the explanations below, then retry — you'll get a different set of questions covering the same material.")
+    +'</p></div>';
+  set.forEach(function(q,i){
+    const chose=S.inquiry.answers[i], ok=chose===q.a;
+    h+='<div class="q"><p class="q-stem"><span class="q-num">'+String(i+1).padStart(2,"0")+'</span>'+q.q+'</p>';
+    q.o.forEach(function(opt,j){
+      let cls="opt";
+      if(j===q.a) cls+=" right";
+      else if(j===chose) cls+=" wrong";
+      h+='<button class="'+cls+'" disabled>'+opt+'</button>';
+    });
+    h+='<div class="rationale '+(ok?"ok":"no")+'"><b>'+(ok?"Correct":"You chose "+String.fromCharCode(65+chose)+" — correct answer is "+String.fromCharCode(65+q.a))+'</b>'+q.e+'</div></div>';
+  });
+  h+='<div class="gate"><span class="gate-msg">Every response is identified and explained · §19.1009(h)(2)(C)</span>';
+  if(!passed) h+='<button class="btn" onclick="retryInquiry()">Retry with a new set</button>';
+  else if(last) h+='<button class="btn" onclick="exitCourse()">Finish course</button>';
+  else h+='<button class="btn" onclick="nextSection()">Continue to next section</button>';
+  h+='</div></div>';
+  return h;
+}
+window.retryInquiry=function(){ window.startInquiry(); };
+window.nextSection=function(){
+  S.idx++; S.accrued=0; S.lastActivity=Date.now(); S.view="content";
+  log("Section "+(S.idx+1)+" unlocked","Forced progression — prior section mastery required");
+  render();
+};
+window.exitCourse=function(){
+  S.view="exiting";
+  challengeIdentity("exit");
+};
+function finishCourse(){
+  S.view="complete";
+  log("Course completed — result transmitted to provider of record",
+      "§19.1009(h)(2)(F) — direct transmission of completion results","pass");
+  render();
+}
+
+function viewComplete(){
+  const mins=Math.round(S.totalAccrued/60);
+  const cid="TX-CLEQ-"+String(Date.now()).slice(-8);
+  return '<div class="card-hd"><h2>Completion record</h2><span class="cite-badge">transmitted</span></div>'
+  +'<div class="card-bd"><div class="cert">'
+  +'<h2>Certificate of Completion</h2>'
+  +'<div class="sub">Classroom equivalent · Texas Department of Insurance</div>'
+  +'<dl>'
+  +'<dt>Student</dt><dd>'+S.student.name+'</dd>'
+  +'<dt>Course</dt><dd>Texas All-Lines Adjuster — demonstration segment</dd>'
+  +'<dt>Method</dt><dd>Classroom equivalent, 28 TAC §19.1009(h)</dd>'
+  +'<dt>Seat time</dt><dd>'+mins+' minutes accrued (idle time excluded)</dd>'
+  +'<dt>Inquiry periods</dt><dd>'+SECTIONS.length+' cleared at 70% or better</dd>'
+  +'<dt>Identity checks</dt><dd>Entry, periodic, and exit — all passed</dd>'
+  +'<dt>Started</dt><dd>'+S.started.toLocaleString()+'</dd>'
+  +'<dt>Record ID</dt><dd style="font-family:var(--mono)">'+cid+'</dd>'
+  +'</dl></div>'
+  +'<p class="note">Certificate fields here are a placeholder. The required elements are fixed by §19.1007 and must be reconciled against that rule before anything issues to a student.</p>'
+  +'<div class="gate"><span class="gate-msg">Ledger below is the evidence file for this session</span>'
+  +'<button class="btn btn-alt" onclick="location.reload()">Run another session</button></div></div>';
+}
+
+function viewLocked(){
+  return '<div class="card-hd"><h2>Session suspended</h2><span class="cite-badge">authentication</span></div>'
+  +'<div class="card-bd"><div class="verdict no"><h3>We couldn\'t verify it\'s you</h3>'
+  +'<p>Three identity checks failed, so this session is closed and the unposted seat time is void. Contact the provider to reopen the course.</p></div>'
+  +'<p style="color:var(--ink-2);max-width:62ch">The ledger keeps the full record of what happened, including the failed attempts.</p>'
+  +'<div class="gate"><span class="gate-msg">Nothing is transmitted for a suspended session</span>'
+  +'<button class="btn btn-alt" onclick="location.reload()">Start over</button></div></div>';
+}
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
+document.getElementById("exportBtn").addEventListener("click",function(){
+  const rows=[["timestamp","event","authority"]].concat(
+    S.ledger.map(function(e){return [e.t.toISOString(),e.event,e.cite]})
+  );
+  const csv=rows.map(function(r){
+    return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(",");
+  }).join("\n");
+  const url=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  const a=document.createElement("a");
+  a.href=url; a.download="cleq-ledger-"+Date.now()+".csv"; a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+log("Engine initialized — demo cadence active","Operator setting — not a student control");
+render();
+</script>
+</body>
+</html>
