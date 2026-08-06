@@ -25,9 +25,66 @@
   --color-danger-500: #e5484d;
 }
 
+/* Light theme.
+ *
+ * The ink ramp is inverted rather than remapped: ink-950 is "furthest back"
+ * and ink-50 is "furthest forward" in both themes, so every existing utility
+ * (bg-ink-950, text-ink-100, border-ink-700 ...) keeps meaning the same thing
+ * and no component needs a dark: variant. Only these values change.
+ *
+ * The edge greens are darkened, not inverted -- #3fdb8f on white is unreadable,
+ * so edge-300/400 move down the ramp to stay legible as text on a light panel.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --color-ink-950: #f6f8f9;
+  --color-ink-900: #ffffff;
+  --color-ink-800: #eff3f5;
+  --color-ink-700: #e0e6ea;
+  --color-ink-600: #cfd8de;
+  --color-ink-500: #aebac3;
+  --color-ink-400: #8896a2;
+  --color-ink-300: #5d6b78;
+  --color-ink-200: #3a4753;
+  --color-ink-100: #1a2530;
+  --color-ink-50: #0a0d12;
+
+  --color-edge-600: #0a6b43;
+  --color-edge-500: #0f9d63;
+  --color-edge-400: #0b7d4e;
+  --color-edge-300: #0a6b43;
+
+  --color-warn-500: #9a7a10;
+  --color-danger-500: #c23237;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
 @layer base {
   body {
     @apply bg-ink-950 text-ink-100 antialiased;
     font-feature-settings: "cv11", "salt";
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  /* The primary button hardcodes text-ink-950 for contrast against edge-500.
+     Inverted, that token is near-white, which is still correct -- but the
+     glow shadow needs toning down or it blooms on a light background. */
+  :root[data-theme="light"] body {
+    --tw-shadow-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

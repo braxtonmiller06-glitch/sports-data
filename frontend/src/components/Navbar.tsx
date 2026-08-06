@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
 import { Button } from "./Button";
+import { AccountMenu } from "./AccountMenu";
 import { useAuth } from "../context/AuthContext";
 
 export function Navbar() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 border-b border-ink-800/80 bg-ink-950/85 backdrop-blur">
@@ -23,12 +24,13 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <Link to="/dashboard" className="text-sm font-medium text-ink-200 hover:text-ink-50">
+              <Link
+                to="/dashboard"
+                className="hidden text-sm font-medium text-ink-200 hover:text-ink-50 sm:block"
+              >
                 Dashboard
               </Link>
-              <Button variant="secondary" onClick={() => void signOut()}>
-                Sign out
-              </Button>
+              <AccountMenu />
             </>
           ) : (
             <>
