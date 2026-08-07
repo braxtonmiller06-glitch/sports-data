@@ -5,17 +5,15 @@ import {
   FlaskConical,
   Gauge,
   LayoutDashboard,
-  Newspaper,
-  Radio,
   Scale,
   Settings,
   Sigma,
-  Sparkles,
   TrendingUp,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES, type RoutePath } from "@/lib/routes";
+import { TOOLS } from "@/lib/tools";
 import type { FeatureId } from "@/lib/access";
 
 export interface NavItemDef {
@@ -40,6 +38,9 @@ export interface NavSectionDef {
  * Single source of truth for the sidebar, the page title, and route
  * generation. Paths come from ROUTES rather than string literals, so a
  * destination cannot drift out of sync with the router.
+ *
+ * The Tools section is derived from the tool registry, so the sidebar and the
+ * Tools menu can never disagree about what exists.
  */
 export const NAV_SECTIONS: NavSectionDef[] = [
   {
@@ -47,6 +48,15 @@ export const NAV_SECTIONS: NavSectionDef[] = [
       { label: "Overview", to: ROUTES.dashboard, icon: LayoutDashboard },
       { label: "Today's Slate", to: ROUTES.slate, icon: CalendarDays, soon: true },
     ],
+  },
+  {
+    label: "Tools",
+    items: TOOLS.map((tool) => ({
+      label: tool.name,
+      to: tool.to,
+      icon: tool.icon,
+      feature: tool.premiumFeature,
+    })),
   },
   {
     label: "Research",
@@ -61,13 +71,6 @@ export const NAV_SECTIONS: NavSectionDef[] = [
     label: "Markets",
     items: [
       { label: "Game Center", to: ROUTES.games, icon: Gauge, soon: true },
-      {
-        label: "Live Plays",
-        to: ROUTES.live,
-        icon: Radio,
-        soon: true,
-        feature: "live_plays_alerts",
-      },
       { label: "Market Movers", to: ROUTES.marketMovers, icon: TrendingUp, soon: true },
     ],
   },
@@ -76,13 +79,6 @@ export const NAV_SECTIONS: NavSectionDef[] = [
     items: [
       { label: "Bet Tracker", to: ROUTES.tracker, icon: ClipboardList, soon: true },
       { label: "Performance", to: ROUTES.performance, icon: ChartColumn, soon: true },
-    ],
-  },
-  {
-    label: "Intelligence",
-    items: [
-      { label: "Morning Briefing", to: ROUTES.briefing, icon: Newspaper, soon: true },
-      { label: "Ask Atlas AI", to: ROUTES.askAtlas, icon: Sparkles, soon: true, feature: "ask_atlas" },
     ],
   },
 ];

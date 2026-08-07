@@ -8,8 +8,6 @@ import { Sidebar, SidebarContent, SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED } from 
 import { NotificationPanel } from "./NotificationPanel";
 import { ShellProvider, useShell } from "./shell-context";
 import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
-import { AccessProvider } from "@/lib/access";
-import { TrackedPropsProvider } from "@/lib/tracked-props";
 import { pageVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -94,16 +92,19 @@ function ShellFrame({ children, contained = true, className }: AppShellProps) {
  *
  * Pages supply only their content -- never their own chrome.
  */
+/**
+ * Note on providers: AccessProvider and TrackedPropsProvider deliberately live
+ * at the App root, not here. A page renders AppShell as its *child*, so a
+ * provider mounted here is below the page in the tree — any page calling
+ * useAccess() at its top level would throw. Only shell-internal state belongs
+ * at this level.
+ */
 export function AppShell(props: AppShellProps) {
   return (
-    <AccessProvider>
-      <TrackedPropsProvider>
-        <ShellProvider>
-          <TooltipProvider>
-            <ShellFrame {...props} />
-          </TooltipProvider>
-        </ShellProvider>
-      </TrackedPropsProvider>
-    </AccessProvider>
+    <ShellProvider>
+      <TooltipProvider>
+        <ShellFrame {...props} />
+      </TooltipProvider>
+    </ShellProvider>
   );
 }

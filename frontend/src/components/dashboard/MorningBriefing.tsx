@@ -38,7 +38,7 @@ export function MorningBriefing({ className }: { className?: string }) {
 
         <div className="mt-auto pt-1">
           <Button variant="secondary" asChild>
-            <Link to={ROUTES.briefing}>
+            <Link to={ROUTES.morningBriefing}>
               Read full briefing
               <ArrowRight />
             </Link>

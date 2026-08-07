@@ -280,10 +280,10 @@ export const quickAccessFixture: QuickAccessModule[] = [
   { title: "Player Lookup", description: "Search any player and pull their full projection history.", icon: UserSearch, to: ROUTES.playerLookup },
   { title: "Game Center", description: "Every market on a single game, side by side.", icon: Gauge, to: ROUTES.games },
   { title: "Research Reports", description: "Published breakdowns from the filter engine.", icon: BookOpen, to: ROUTES.research, feature: "full_research_reports" },
-  { title: "Live Plays", description: "Positions still in play, updating in real time.", icon: Radio, to: ROUTES.live, feature: "live_plays_alerts" },
+  { title: "Live Plays", description: "Positions still in play, updating in real time.", icon: Radio, to: ROUTES.livePlays, feature: "live_plays_alerts" },
   { title: "Bet Tracker", description: "Log positions and grade them against closing lines.", icon: ClipboardList, to: ROUTES.tracker },
   { title: "Performance", description: "Your record, graded against closing lines.", icon: ChartColumn, to: ROUTES.performance },
-  { title: "Morning Briefing", description: "The daily written read on today's slate.", icon: Newspaper, to: ROUTES.briefing },
+  { title: "Morning Briefing", description: "The daily written read on today's slate.", icon: Newspaper, to: ROUTES.morningBriefing },
   { title: "Ask Atlas AI", description: "Question the research layer in plain language.", icon: Sparkles, to: ROUTES.askAtlas, feature: "ask_atlas" },
 ];
 

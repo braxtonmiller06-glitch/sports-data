@@ -6,6 +6,7 @@ import { NotificationsButton } from "./NotificationsButton";
 import { ProfileMenu } from "./ProfileMenu";
 import { MembershipBadge } from "./MembershipBadge";
 import { TierSwitcher } from "@/components/subscription/TierSwitcher";
+import { ToolsMenu } from "./ToolsMenu";
 import { titleForPath } from "./nav-config";
 import { Separator } from "@/components/ui/separator";
 import { useShell } from "@/components/layout/shell-context";
@@ -56,6 +57,9 @@ export function TopNav() {
       <h1 className="shrink-0 truncate text-sm font-medium tracking-tight text-fg">
         {titleForPath(pathname)}
       </h1>
+
+      {/* The eight tools, reachable from every page. */}
+      <ToolsMenu className="hidden shrink-0 md:flex" />
 
       {/* Center: global search. Grows to fill, capped so it stays centred-ish. */}
       <div className="flex min-w-0 flex-1 justify-center px-2">

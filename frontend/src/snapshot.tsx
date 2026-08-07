@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import "./index.css";
 import { ThemeProvider, THEME_STORAGE_KEY } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
+import { AccessProvider } from "./lib/access";
+import { TrackedPropsProvider } from "./lib/tracked-props";
 import DashboardPage from "./pages/dashboard";
 
 /**
@@ -38,9 +40,13 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <MemoryRouter initialEntries={["/dashboard"]}>
-          <DashboardPage />
-        </MemoryRouter>
+        <AccessProvider>
+          <TrackedPropsProvider>
+            <MemoryRouter initialEntries={["/dashboard"]}>
+              <DashboardPage />
+            </MemoryRouter>
+          </TrackedPropsProvider>
+        </AccessProvider>
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>,
