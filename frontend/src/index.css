@@ -1,9 +1,67 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ===========================================================================
+   Atlas design system
+   ---------------------------------------------------------------------------
+   Two token layers live here, deliberately:
+
+   1. `@theme` — the Atlas palette. These generate Tailwind utilities directly
+      (bg-canvas, border-line, text-fg-muted, ...) and are what application
+      code should reach for.
+   2. `:root` shadcn variables + `@theme inline` — the contract `npx shadcn add`
+      expects. Keeping them means any future shadcn component drops in already
+      wearing Atlas colors, with no re-theming pass.
+
+   The legacy "ink" and "edge" ramps are preserved below because Landing,
+   Login, Settings and PickCard are all still built on them. Removing them
+   would be a rewrite of pages this task does not cover.
+   =========================================================================== */
 
 @theme {
-  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans:
+    "Inter var", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
 
-  /* Dark, sportsbook-analytics palette. Placeholder -- swap freely. */
+  /* --- Atlas surfaces ---------------------------------------------------- */
+  --color-canvas: #0f0f10;
+  --color-surface: #17181c;
+  --color-surface-hi: #1c1e23;
+  --color-surface-hover: #202329;
+  --color-inset: #121316;
+
+  /* --- Hairlines --------------------------------------------------------- */
+  --color-line: #2a2c32;
+  --color-line-hi: #383b43;
+  --color-line-faint: #202228;
+
+  /* --- Typography -------------------------------------------------------- */
+  --color-fg: #fafafa;
+  --color-fg-muted: #a0a0ab;
+  --color-fg-subtle: #71717a;
+  --color-fg-faint: #52525b;
+
+  /* --- Atlas green ------------------------------------------------------- */
+  --color-atlas: #17c964;
+  --color-atlas-hi: #45d888;
+  --color-atlas-lo: #12a150;
+  --color-atlas-ink: #052e16;
+
+  /* --- Semantic (kept distinct from the brand accent) -------------------- */
+  --color-signal-warn: #e5a94d;
+  --color-signal-crit: #e5484d;
+  --color-signal-info: #6e8ba8;
+
+  /* --- Motion: the 250ms ceiling this app holds itself to ---------------- */
+  --ease-atlas: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 250ms;
+
+  /* --- Legacy ramp (still used by Landing/Login/Settings/PickCard) ------- */
   --color-ink-950: #0a0d12;
   --color-ink-900: #0e1218;
   --color-ink-800: #131a22;
@@ -25,19 +83,83 @@
   --color-danger-500: #e5484d;
 }
 
-/* Light theme.
- *
- * The ink ramp is inverted rather than remapped: ink-950 is "furthest back"
- * and ink-50 is "furthest forward" in both themes, so every existing utility
- * (bg-ink-950, text-ink-100, border-ink-700 ...) keeps meaning the same thing
- * and no component needs a dark: variant. Only these values change.
- *
- * The edge greens are darkened, not inverted -- #3fdb8f on white is unreadable,
- * so edge-300/400 move down the ramp to stay legible as text on a light panel.
- */
+/* ---------------------------------------------------------------------------
+   shadcn/ui variable contract, expressed in Atlas colors.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --radius: 0.75rem;
+
+  --background: #0f0f10;
+  --foreground: #fafafa;
+  --card: #17181c;
+  --card-foreground: #fafafa;
+  --popover: #1c1e23;
+  --popover-foreground: #fafafa;
+  --primary: #17c964;
+  --primary-foreground: #052e16;
+  --secondary: #1c1e23;
+  --secondary-foreground: #fafafa;
+  --muted: #1c1e23;
+  --muted-foreground: #a0a0ab;
+  --accent: #202329;
+  --accent-foreground: #fafafa;
+  --destructive: #e5484d;
+  --destructive-foreground: #fafafa;
+  --border: #2a2c32;
+  --input: #2a2c32;
+  --ring: #17c964;
+}
+
+/* The app already ships a light/dark/system ThemeProvider and a Settings page
+   that drives it. The spec for this shell is the dark palette above, so light
+   mode is kept working rather than dropped -- same tokens, inverted values. */
 :root[data-theme="light"] {
   color-scheme: light;
 
+  --color-canvas: #f7f8f9;
+  --color-surface: #ffffff;
+  --color-surface-hi: #f4f5f7;
+  --color-surface-hover: #eceef1;
+  --color-inset: #f0f2f4;
+
+  --color-line: #e2e4e9;
+  --color-line-hi: #cfd2d9;
+  --color-line-faint: #eef0f3;
+
+  --color-fg: #101114;
+  --color-fg-muted: #5c5f6b;
+  --color-fg-subtle: #797d89;
+  --color-fg-faint: #9a9ea9;
+
+  --color-atlas: #12a150;
+  --color-atlas-hi: #0e8442;
+  --color-atlas-lo: #0e8442;
+  --color-atlas-ink: #ffffff;
+
+  --color-signal-warn: #9a6b10;
+  --color-signal-crit: #c23237;
+  --color-signal-info: #4a6b88;
+
+  --background: #f7f8f9;
+  --foreground: #101114;
+  --card: #ffffff;
+  --card-foreground: #101114;
+  --popover: #ffffff;
+  --popover-foreground: #101114;
+  --primary: #12a150;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #101114;
+  --muted: #f4f5f7;
+  --muted-foreground: #5c5f6b;
+  --accent: #eceef1;
+  --accent-foreground: #101114;
+  --border: #e2e4e9;
+  --input: #e2e4e9;
+  --ring: #12a150;
+
+  /* legacy ramp, inverted */
   --color-ink-950: #f6f8f9;
   --color-ink-900: #ffffff;
   --color-ink-800: #eff3f5;
@@ -63,20 +185,79 @@
   color-scheme: dark;
 }
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
 @layer base {
-  body {
-    @apply bg-ink-950 text-ink-100 antialiased;
-    font-feature-settings: "cv11", "salt";
-    transition:
-      background-color 150ms ease,
-      color 150ms ease;
+  * {
+    border-color: var(--color-line);
   }
 
-  /* The primary button hardcodes text-ink-950 for contrast against edge-500.
-     Inverted, that token is near-white, which is still correct -- but the
-     glow shadow needs toning down or it blooms on a light background. */
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "salt";
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  /* Digits that sit in columns should not jitter as values update. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-atlas);
+    outline-offset: 2px;
+  }
+
   :root[data-theme="light"] body {
     --tw-shadow-color: transparent;
+  }
+}
+
+@layer utilities {
+  /* Thin scrollbars that read as part of the chrome rather than the OS. */
+  .scrollbar-atlas {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-hi) transparent;
+  }
+  .scrollbar-atlas::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-atlas::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-hi);
+    border-radius: 9999px;
+  }
+  .scrollbar-atlas::-webkit-scrollbar-track {
+    background: transparent;
   }
 }
 

@@ -8,6 +8,13 @@
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
+    /* Path aliases -- kept in sync with vite.config.ts and components.json.
+       No baseUrl: it is deprecated in TS 6, and under moduleResolution
+       "bundler" these paths already resolve relative to this file. */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
