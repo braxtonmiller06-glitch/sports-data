@@ -6,21 +6,22 @@ import { ThemeProvider, THEME_STORAGE_KEY } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import { AccessProvider } from "./lib/access";
 import { TrackedPropsProvider } from "./lib/tracked-props";
-import DashboardPage from "./pages/dashboard";
+import { AppRoutes } from "./AppRoutes";
 
 /**
  * Static snapshot entry point.
  *
- * Builds the real dashboard into a single self-contained page for review and
- * sharing. It is the same components the app renders — not a mockup — with two
- * differences forced for the standalone context:
+ * Builds the real application into a single self-contained page for review and
+ * sharing. It renders the *same* route table as the live app — not a single
+ * page — so every link in the sidebar, the Tools menu and the dashboard cards
+ * navigates exactly as it does in the app.
  *
- *  - MemoryRouter, because the page is served from an arbitrary path with no
- *    server-side routing behind it.
- *  - The auth guard is skipped: there is no session here, and the dashboard
- *    reads only fixture data anyway.
+ * Two differences are forced by the standalone context:
  *
- * This is a review artifact. It is not part of the application bundle.
+ *  - MemoryRouter, because the file is opened from an arbitrary path with no
+ *    server behind it to resolve routes.
+ *  - The auth guard is off: there is no session here, and every page reads
+ *    fixtures anyway.
  */
 
 // The host page decides light/dark, but this snapshot exists to show the
@@ -43,7 +44,7 @@ createRoot(document.getElementById("root")!).render(
         <AccessProvider>
           <TrackedPropsProvider>
             <MemoryRouter initialEntries={["/dashboard"]}>
-              <DashboardPage />
+              <AppRoutes guarded={false} />
             </MemoryRouter>
           </TrackedPropsProvider>
         </AccessProvider>
