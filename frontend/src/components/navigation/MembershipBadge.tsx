@@ -1,33 +1,28 @@
 import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useProfile } from "@/hooks/useProfile";
-import { cn } from "@/lib/utils";
+import { TIER_LABEL, useAccess, type SubscriptionTier } from "@/lib/access";
 
-type Tier = { label: string; variant: "atlas" | "neutral" | "warn"; icon: boolean };
-
-const TIERS: Record<string, Tier> = {
-  active: { label: "Sharp", variant: "atlas", icon: true },
-  past_due: { label: "Past due", variant: "warn", icon: false },
-  canceled: { label: "Canceled", variant: "neutral", icon: false },
-  free: { label: "Free", variant: "neutral", icon: false },
+const TIER_STYLE: Record<SubscriptionTier, { variant: "atlas" | "neutral"; icon: boolean }> = {
+  free: { variant: "neutral", icon: false },
+  medium: { variant: "atlas", icon: false },
+  elite: { variant: "atlas", icon: true },
 };
 
 /**
- * Membership tier chip. Reads the existing `profiles.subscription_status`
- * rather than introducing a parallel notion of entitlement.
+ * Membership tier chip.
+ *
+ * Reads the access model rather than the Supabase profile directly, so the tier
+ * shown here always matches the tier the rest of the UI is gating on — including
+ * when the dev switcher overrides it.
  */
 export function MembershipBadge({ className }: { className?: string }) {
-  const { profile, loading } = useProfile();
-
-  if (loading) return <Skeleton className={cn("h-5 w-14 rounded-md", className)} />;
-
-  const tier = TIERS[profile?.subscription_status ?? "free"] ?? TIERS.free;
+  const { tier } = useAccess();
+  const style = TIER_STYLE[tier];
 
   return (
-    <Badge variant={tier.variant} className={className}>
-      {tier.icon && <Sparkles />}
-      {tier.label}
+    <Badge variant={style.variant} className={className}>
+      {style.icon && <Sparkles />}
+      {TIER_LABEL[tier]}
     </Badge>
   );
 }

@@ -4,11 +4,13 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavItem } from "@/components/navigation/NavItem";
 import { activeNavItem, NAV_SECTIONS, SETTINGS_ITEM } from "@/components/navigation/nav-config";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TierSwitcher } from "@/components/subscription/TierSwitcher";
 import { AtlasMark, AtlasWordmark } from "./AtlasMark";
 import { SidebarFooter } from "./SidebarFooter";
 import { useShell } from "./shell-context";
 import { DURATION, EASE_ATLAS } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/lib/routes";
 
 export const SIDEBAR_WIDTH = 248;
 export const SIDEBAR_WIDTH_COLLAPSED = 64;
@@ -43,7 +45,7 @@ export function SidebarContent({
         )}
       >
         <Link
-          to="/dashboard"
+          to={ROUTES.dashboard}
           onClick={onNavigate}
           className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none"
           aria-label="Atlas Analytics home"
@@ -134,6 +136,14 @@ export function SidebarContent({
           </div>
         </div>
       </nav>
+
+      {/* Dev-only. Lives here as well as the top bar so tiers stay switchable
+          on mobile, where the top bar has no room for it. */}
+      {!collapsed && (
+        <div className="px-3 pb-2">
+          <TierSwitcher className="w-full justify-center" />
+        </div>
+      )}
 
       <SidebarFooter collapsed={collapsed} onNavigate={onNavigate} />
     </div>

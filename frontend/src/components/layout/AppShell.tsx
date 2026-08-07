@@ -7,6 +7,9 @@ import { TopNav } from "@/components/navigation/TopNav";
 import { Sidebar, SidebarContent, SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED } from "./Sidebar";
 import { NotificationPanel } from "./NotificationPanel";
 import { ShellProvider, useShell } from "./shell-context";
+import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
+import { AccessProvider } from "@/lib/access";
+import { TrackedPropsProvider } from "@/lib/tracked-props";
 import { pageVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +77,10 @@ function ShellFrame({ children, contained = true, className }: AppShellProps) {
       </div>
 
       <NotificationPanel />
+
+      {/* Mounted once for the whole app: no component owns its own upgrade
+          modal, so the copy cannot drift between surfaces. */}
+      <UpgradePrompt />
     </div>
   );
 }
@@ -89,10 +96,14 @@ function ShellFrame({ children, contained = true, className }: AppShellProps) {
  */
 export function AppShell(props: AppShellProps) {
   return (
-    <ShellProvider>
-      <TooltipProvider>
-        <ShellFrame {...props} />
-      </TooltipProvider>
-    </ShellProvider>
+    <AccessProvider>
+      <TrackedPropsProvider>
+        <ShellProvider>
+          <TooltipProvider>
+            <ShellFrame {...props} />
+          </TooltipProvider>
+        </ShellProvider>
+      </TrackedPropsProvider>
+    </AccessProvider>
   );
 }

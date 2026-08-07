@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, initialsFrom } from "@/components/ui/avatar";
 import { MembershipBadge } from "./MembershipBadge";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/lib/routes";
 
 export function ProfileMenu() {
   const { user, signOut } = useAuth();
@@ -21,7 +22,7 @@ export function ProfileMenu() {
 
   async function handleSignOut() {
     await signOut();
-    navigate("/login");
+    navigate(ROUTES.login);
   }
 
   return (
@@ -59,15 +60,15 @@ export function ProfileMenu() {
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={() => navigate("/settings")}>
+          <DropdownMenuItem onSelect={() => navigate(ROUTES.settings)}>
             <UserRound />
             Profile
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => navigate("/settings")}>
+          <DropdownMenuItem onSelect={() => navigate(ROUTES.settings)}>
             <Settings />
             Settings
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => navigate("/settings")}>
+          <DropdownMenuItem onSelect={() => navigate(ROUTES.settings)}>
             <CreditCard />
             Billing
           </DropdownMenuItem>

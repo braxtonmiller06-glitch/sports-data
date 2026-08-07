@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { MembershipBadge } from "@/components/navigation/MembershipBadge";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/lib/routes";
 
 interface SidebarFooterProps {
   collapsed?: boolean;
@@ -26,7 +27,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              to="/settings"
+              to={ROUTES.settings}
               onClick={onNavigate}
               aria-label="Account and settings"
               className="rounded-lg outline-none"
@@ -68,7 +69,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              to="/settings"
+              to={ROUTES.settings}
               onClick={onNavigate}
               aria-label="Settings"
               className={cn(

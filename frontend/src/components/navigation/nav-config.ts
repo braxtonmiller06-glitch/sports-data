@@ -1,11 +1,12 @@
 import {
-  Activity,
   CalendarDays,
   ChartColumn,
   ClipboardList,
   FlaskConical,
+  Gauge,
   LayoutDashboard,
   Newspaper,
+  Radio,
   Scale,
   Settings,
   Sigma,
@@ -14,15 +15,19 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
+import { ROUTES, type RoutePath } from "@/lib/routes";
+import type { FeatureId } from "@/lib/access";
 
 export interface NavItemDef {
   label: string;
-  to: string;
+  to: RoutePath;
   icon: LucideIcon;
   /** Rendered as a trailing count chip. Wired to real data later. */
   badge?: string;
   /** Marks routes whose page is still a placeholder. */
   soon?: boolean;
+  /** Feature this destination belongs to, when it is tier-gated. */
+  feature?: FeatureId;
 }
 
 export interface NavSectionDef {
@@ -32,52 +37,59 @@ export interface NavSectionDef {
 }
 
 /**
- * Single source of truth for the sidebar, the page title in the top bar, and
- * the command palette. Adding a destination means adding it here and nowhere
- * else.
+ * Single source of truth for the sidebar, the page title, and route
+ * generation. Paths come from ROUTES rather than string literals, so a
+ * destination cannot drift out of sync with the router.
  */
 export const NAV_SECTIONS: NavSectionDef[] = [
   {
     items: [
-      { label: "Overview", to: "/dashboard", icon: LayoutDashboard },
-      { label: "Today's Slate", to: "/slate", icon: CalendarDays, soon: true },
+      { label: "Overview", to: ROUTES.dashboard, icon: LayoutDashboard },
+      { label: "Today's Slate", to: ROUTES.slate, icon: CalendarDays, soon: true },
     ],
   },
   {
     label: "Research",
     items: [
-      { label: "Research", to: "/research", icon: FlaskConical, soon: true },
-      { label: "Player Props", to: "/research/props", icon: UserRound, soon: true },
-      { label: "Moneylines", to: "/research/moneylines", icon: Scale, soon: true },
-      { label: "Totals", to: "/research/totals", icon: Sigma, soon: true },
+      { label: "Research Reports", to: ROUTES.research, icon: FlaskConical, soon: true },
+      { label: "Player Lookup", to: ROUTES.playerLookup, icon: UserRound, soon: true },
+      { label: "Moneylines", to: ROUTES.moneylines, icon: Scale, soon: true },
+      { label: "Totals", to: ROUTES.totals, icon: Sigma, soon: true },
     ],
   },
   {
     label: "Markets",
     items: [
-      { label: "Live Market", to: "/market", icon: Activity, soon: true },
-      { label: "Market Movers", to: "/market/movers", icon: TrendingUp, soon: true },
+      { label: "Game Center", to: ROUTES.games, icon: Gauge, soon: true },
+      {
+        label: "Live Plays",
+        to: ROUTES.live,
+        icon: Radio,
+        soon: true,
+        feature: "live_plays_alerts",
+      },
+      { label: "Market Movers", to: ROUTES.marketMovers, icon: TrendingUp, soon: true },
     ],
   },
   {
     label: "Portfolio",
     items: [
-      { label: "Bet Tracker", to: "/tracker", icon: ClipboardList, soon: true },
-      { label: "Performance", to: "/performance", icon: ChartColumn, soon: true },
+      { label: "Bet Tracker", to: ROUTES.tracker, icon: ClipboardList, soon: true },
+      { label: "Performance", to: ROUTES.performance, icon: ChartColumn, soon: true },
     ],
   },
   {
     label: "Intelligence",
     items: [
-      { label: "Morning Briefing", to: "/briefing", icon: Newspaper, soon: true },
-      { label: "Ask Atlas AI", to: "/ask", icon: Sparkles, soon: true },
+      { label: "Morning Briefing", to: ROUTES.briefing, icon: Newspaper, soon: true },
+      { label: "Ask Atlas AI", to: ROUTES.askAtlas, icon: Sparkles, soon: true, feature: "ask_atlas" },
     ],
   },
 ];
 
 export const SETTINGS_ITEM: NavItemDef = {
   label: "Settings",
-  to: "/settings",
+  to: ROUTES.settings,
   icon: Settings,
 };
 
@@ -91,8 +103,6 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
  * exact matches winning. Resolving it once here is what keeps /research from
  * lighting up alongside /research/props, and guarantees the highlighted rail
  * item and the top-bar title can never disagree.
- *
- * Returns null when the path is outside the nav (auth pages, previews).
  */
 export function activeNavItem(pathname: string): NavItemDef | null {
   const exact = ALL_NAV_ITEMS.find((item) => item.to === pathname);

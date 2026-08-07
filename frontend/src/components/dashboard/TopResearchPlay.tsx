@@ -1,13 +1,17 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { BookmarkPlus, Check, TriangleAlert } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { BookmarkCheck, BookmarkPlus, Layers } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LivePulse } from "@/components/ui/live-pulse";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ResearchFilters } from "./ResearchFilters";
+import { PremiumGate } from "@/components/subscription/PremiumGate";
+import { useTrackedProps } from "@/lib/tracked-props";
+import { ROUTES } from "@/lib/routes";
 import { cardVariants, transition } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import { topPlayFixture } from "@/data/dashboardFixtures";
+import { premiumInsightsFixture, topPlayFixture } from "@/data/dashboardFixtures";
 
 const play = topPlayFixture;
 
@@ -19,15 +23,21 @@ const METRICS = [
   { label: "Filters passed", value: `${play.filtersPassed} / ${play.filtersTotal}`, tone: "fg" },
 ] as const;
 
+const PLAY_ID = "top-play-edwards-pts";
+
 /**
  * The single highest-conviction subject on the board.
  *
- * "Why we like it" is the important half: each filter is named on the face of
- * the card and explains itself on hover or keyboard focus, so the reasoning is
- * inspectable rather than a score to be taken on trust.
+ * Available at every tier — a free account gets today's play in full, including
+ * all eight signals and their reasoning. What Medium adds is the rest of the
+ * board, surfaced below rather than hidden.
  */
 export function TopResearchPlay({ className }: { className?: string }) {
   const reduceMotion = useReducedMotion();
+  const navigate = useNavigate();
+  const { isTracked, toggle } = useTrackedProps();
+
+  const tracked = isTracked(PLAY_ID);
 
   return (
     <motion.div
@@ -61,8 +71,6 @@ export function TopResearchPlay({ className }: { className?: string }) {
         </div>
 
         {/* Metrics */}
-        {/* 5 metrics across only once the card is genuinely wide; at its usual
-            6-of-12 span it sits at 3 across over two rows. */}
         <dl className="grid grid-cols-2 gap-px bg-line-faint sm:grid-cols-3 2xl:grid-cols-5">
           {METRICS.map((metric) => (
             <div key={metric.label} className="flex flex-col gap-2 bg-surface px-5 py-4">
@@ -81,56 +89,79 @@ export function TopResearchPlay({ className }: { className?: string }) {
           ))}
         </dl>
 
-        {/* Why we like it */}
-        <div className="flex flex-1 flex-col gap-3 border-t border-line-faint p-5">
-          <div className="flex items-center gap-2">
-            <h4 className="text-[10px] font-medium tracking-[0.16em] text-fg-faint">
-              WHY WE LIKE IT
-            </h4>
-            <span className="text-[11px] text-fg-faint">
-              Hover a signal for the detail behind it
-            </span>
-          </div>
+        {/* Reasoning — never gated */}
+        <div className="flex flex-1 flex-col gap-4 border-t border-line-faint p-5">
+          <ResearchFilters filters={play.filters} />
 
-          <ul className="flex flex-wrap gap-2">
-            {play.filters.map((filter) => (
-              <li key={filter.name}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5",
-                        "text-[12px] font-medium outline-none",
-                        "transition-colors duration-[120ms]",
-                        filter.status === "pass"
-                          ? "border-atlas/25 bg-atlas/8 text-fg hover:border-atlas/50 hover:bg-atlas/12"
-                          : "border-signal-warn/30 bg-signal-warn/10 text-signal-warn hover:border-signal-warn/50",
-                      )}
-                    >
-                      {filter.status === "pass" ? (
-                        <Check className="size-3.5 text-atlas" />
-                      ) : (
-                        <TriangleAlert className="size-3.5" />
-                      )}
-                      {filter.name}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-wrap font-normal leading-relaxed">
-                    {filter.explanation}
-                  </TooltipContent>
-                </Tooltip>
-              </li>
-            ))}
-          </ul>
+          {/* Elite tier. The signals above explain *why*; this shows the
+              arithmetic that turns them into the number. */}
+          <PremiumGate feature="premium_insights">
+            <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-inset p-4">
+              <h4 className="text-[10px] font-medium tracking-[0.16em] text-fg-faint">
+                EDGE DECOMPOSITION
+              </h4>
+              <dl className="flex flex-col">
+                {premiumInsightsFixture.map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex items-baseline gap-3 border-b border-line-faint py-2 last:border-b-0"
+                  >
+                    <dt className="min-w-0 flex-1 truncate text-[12px] text-fg-muted">
+                      {row.label}
+                      <span className="ml-2 text-[11px] text-fg-faint">{row.detail}</span>
+                    </dt>
+                    <dd className="tabular shrink-0 text-[13px] font-medium text-fg">
+                      {row.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </PremiumGate>
+
+          {/* The rest of the board. Visible to everyone; readable above Free. */}
+          <PremiumGate
+            feature="unlimited_plays"
+            title={`${play.additionalPlaysToday} more plays cleared the threshold today`}
+            description="Every play the filter engine published today, not just the top one."
+          >
+            <Link
+              to={ROUTES.research}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border border-line bg-inset px-4 py-3",
+                "outline-none transition-colors duration-[120ms] hover:border-line-hi hover:bg-surface-hi",
+              )}
+            >
+              <Layers className="size-4 shrink-0 text-atlas" />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[13px] font-medium text-fg">
+                  {play.additionalPlaysToday} more plays today
+                </span>
+                <span className="text-[11px] text-fg-faint">
+                  View the full published board
+                </span>
+              </span>
+            </Link>
+          </PremiumGate>
         </div>
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2.5 border-t border-line-faint p-5">
-          <Button variant="primary">View research</Button>
-          <Button variant="secondary">
-            <BookmarkPlus />
-            Track prop
+          <Button
+            variant="primary"
+            onClick={() => navigate(ROUTES.playerLookup)}
+          >
+            View research
+          </Button>
+          <Button
+            variant={tracked ? "outline" : "secondary"}
+            aria-pressed={tracked}
+            onClick={() =>
+              toggle({ id: PLAY_ID, subject: play.subject, market: play.market })
+            }
+          >
+            {tracked ? <BookmarkCheck className="text-atlas" /> : <BookmarkPlus />}
+            {tracked ? "Tracking" : "Track prop"}
           </Button>
         </div>
       </Card>

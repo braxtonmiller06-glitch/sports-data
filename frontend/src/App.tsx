@@ -3,11 +3,13 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ALL_NAV_ITEMS } from "./components/navigation/nav-config";
+import { ROUTES } from "./lib/routes";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import DashboardPage from "./pages/dashboard";
 import PlaceholderPage from "./pages/Placeholder";
+import NotFoundPage from "./pages/NotFound";
 import LegacyPicks from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 
@@ -25,11 +27,11 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+            <Route path={ROUTES.login} element={<Login />} />
+            <Route path={ROUTES.signup} element={<Signup />} />
 
             <Route
-              path="/dashboard"
+              path={ROUTES.dashboard}
               element={
                 <ProtectedRoute>
                   <DashboardPage />
@@ -61,13 +63,17 @@ export default function App() {
             />
 
             <Route
-              path="/settings"
+              path={ROUTES.settings}
               element={
                 <ProtectedRoute>
                   <Settings />
                 </ProtectedRoute>
               }
             />
+
+            {/* Catch-all, so a stale or mistyped link lands somewhere
+                recoverable rather than on a blank screen. */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

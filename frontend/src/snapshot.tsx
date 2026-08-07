@@ -30,6 +30,10 @@ try {
 }
 document.documentElement.setAttribute("data-theme", "dark");
 
+// Expose the tier switcher in the review build so free/medium/elite can be
+// compared from the shared link, not only from a dev server.
+(globalThis as { __ATLAS_DEV_TOOLS__?: boolean }).__ATLAS_DEV_TOOLS__ = true;
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>

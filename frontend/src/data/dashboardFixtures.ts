@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  ChartColumn,
   ClipboardList,
   Gauge,
   Newspaper,
@@ -8,6 +9,8 @@ import {
   UserSearch,
   type LucideIcon,
 } from "lucide-react";
+import { ROUTES, type RoutePath } from "@/lib/routes";
+import type { FeatureId } from "@/lib/access";
 
 /**
  * ---------------------------------------------------------------------------
@@ -71,10 +74,15 @@ export const slateFixture: SlateStat[] = [
 /* Top research play                                                          */
 /* -------------------------------------------------------------------------- */
 
+export type FilterStatus = "pass" | "warn" | "fail";
+
 export interface PlayFilter {
+  id: string;
   name: string;
-  status: "pass" | "warn";
-  /** Shown on hover/focus. Explains what the filter measured. */
+  status: FilterStatus;
+  /** One-line verdict shown beside the status. */
+  headline: string;
+  /** Shown on hover, focus, or click. The reasoning is never tier-gated. */
   explanation: string;
 }
 
@@ -88,59 +96,89 @@ export const topPlayFixture = {
   edge: "+14%",
   confidence: "92%",
   booksCompared: 28,
-  filtersPassed: 7,
+  filtersPassed: 6,
   filtersTotal: 8,
   lastUpdated: "18 seconds ago",
+  /** Additional plays that cleared the threshold today. Gated above Free. */
+  additionalPlaysToday: 6,
   filters: [
     {
+      id: "pace",
       name: "Pace",
       status: "pass",
+      headline: "6th fastest opponent",
       explanation:
         "Denver plays at 101.4 possessions per 48 minutes, 6th fastest in the league. More possessions means more shot attempts available.",
     },
     {
-      name: "Usage",
-      status: "pass",
-      explanation:
-        "Edwards carries a 33.1% usage rate over the last 10 games, up from 30.4% on the season.",
-    },
-    {
+      id: "minutes",
       name: "Minutes",
       status: "pass",
+      headline: "Projected 37.2",
       explanation:
         "Projected 37.2 minutes. He has cleared 35 minutes in 9 of his last 10 appearances.",
     },
     {
+      id: "usage",
+      name: "Usage",
+      status: "pass",
+      headline: "33.1% over last 10",
+      explanation:
+        "Edwards carries a 33.1% usage rate over the last 10 games, up from 30.4% on the season.",
+    },
+    {
+      id: "matchup",
+      name: "Matchup",
+      status: "pass",
+      headline: "22nd vs wings",
+      explanation:
+        "Denver allows the 4th most points to opposing wings and ranks 22nd in perimeter defensive rating over the last 15 games.",
+    },
+    {
+      id: "rest",
       name: "Rest",
       status: "pass",
+      headline: "Two days rest",
       explanation: "Two days of rest. No back-to-back, and no travel since Tuesday.",
     },
     {
-      name: "Matchup",
-      status: "pass",
-      explanation:
-        "Denver allows the 4th most points to opposing wings and ranks 22nd in perimeter defensive rating.",
-    },
-    {
+      id: "line_value",
       name: "Line Value",
       status: "pass",
+      headline: "27.5 still available",
       explanation:
         "Best available number is 27.5 at three books while the consensus has moved to 28.5.",
     },
     {
-      name: "Defensive Rating",
-      status: "pass",
+      id: "market",
+      name: "Market",
+      status: "warn",
+      headline: "Moving against us",
       explanation:
-        "Opponent defensive rating of 116.2 over the last 15 games, well below the league average of 112.8.",
+        "The consensus has climbed a full point since open and two books have cut limits. The edge shrinks if the remaining books follow.",
     },
     {
-      name: "Blowout Risk",
-      status: "warn",
+      id: "injuries",
+      name: "Injuries",
+      status: "fail",
+      headline: "Blowout risk elevated",
       explanation:
-        "Spread of 9.5 carries real blowout risk. A fourth-quarter benching would cut into the projection.",
+        "Denver's starting guard is out and the spread sits at 9.5. A comfortable lead is the one scenario that removes fourth-quarter minutes entirely.",
     },
   ] satisfies PlayFilter[],
 };
+
+/**
+ * Edge decomposition behind the top play — how the model gets from the market
+ * number to its own. Elite tier.
+ */
+export const premiumInsightsFixture = [
+  { label: "Base projection", value: "28.9", detail: "Season rate, minutes-adjusted" },
+  { label: "Pace adjustment", value: "+1.4", detail: "Opponent possessions vs league" },
+  { label: "Matchup adjustment", value: "+1.9", detail: "Perimeter defence, last 15" },
+  { label: "Usage adjustment", value: "+0.8", detail: "Starting guard ruled out" },
+  { label: "Blowout haircut", value: "-1.2", detail: "9.5 spread, minutes risk" },
+];
 
 /* -------------------------------------------------------------------------- */
 /* Market pulse                                                               */
@@ -229,17 +267,24 @@ export interface QuickAccessModule {
   title: string;
   description: string;
   icon: LucideIcon;
-  to: string;
+  to: RoutePath;
+  /** When set, the module is tier-gated and shows a lock marker below it. */
+  feature?: FeatureId;
 }
 
+/**
+ * Paths come from ROUTES, so every card is guaranteed to resolve to a route
+ * the router actually registers — a broken card becomes a type error.
+ */
 export const quickAccessFixture: QuickAccessModule[] = [
-  { title: "Player Lookup", description: "Search any player and pull their full projection history.", icon: UserSearch, to: "/research/props" },
-  { title: "Game Center", description: "Every market on a single game, side by side.", icon: Gauge, to: "/market" },
-  { title: "Research Reports", description: "Published breakdowns from the filter engine.", icon: BookOpen, to: "/research" },
-  { title: "Live Plays", description: "Positions still in play, updating in real time.", icon: Radio, to: "/market/movers" },
-  { title: "Bet Tracker", description: "Log positions and grade them against closing lines.", icon: ClipboardList, to: "/tracker" },
-  { title: "Morning Briefing", description: "The daily written read on today's slate.", icon: Newspaper, to: "/briefing" },
-  { title: "Ask Atlas AI", description: "Question the research layer in plain language.", icon: Sparkles, to: "/ask" },
+  { title: "Player Lookup", description: "Search any player and pull their full projection history.", icon: UserSearch, to: ROUTES.playerLookup },
+  { title: "Game Center", description: "Every market on a single game, side by side.", icon: Gauge, to: ROUTES.games },
+  { title: "Research Reports", description: "Published breakdowns from the filter engine.", icon: BookOpen, to: ROUTES.research, feature: "full_research_reports" },
+  { title: "Live Plays", description: "Positions still in play, updating in real time.", icon: Radio, to: ROUTES.live, feature: "live_plays_alerts" },
+  { title: "Bet Tracker", description: "Log positions and grade them against closing lines.", icon: ClipboardList, to: ROUTES.tracker },
+  { title: "Performance", description: "Your record, graded against closing lines.", icon: ChartColumn, to: ROUTES.performance },
+  { title: "Morning Briefing", description: "The daily written read on today's slate.", icon: Newspaper, to: ROUTES.briefing },
+  { title: "Ask Atlas AI", description: "Question the research layer in plain language.", icon: Sparkles, to: ROUTES.askAtlas, feature: "ask_atlas" },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -255,13 +300,15 @@ export interface PerformanceStat {
   suffix?: string;
   detail: string;
   trend: Trend;
+  /** When set, the tile is gated and shown behind a lock above its tier. */
+  feature?: FeatureId;
 }
 
 export const performanceFixture: PerformanceStat[] = [
   { label: "ROI", value: 8.4, decimals: 1, prefix: "+", suffix: "%", detail: "Trailing 30 sessions", trend: "up" },
   { label: "Win rate", value: 58.2, decimals: 1, suffix: "%", detail: "142 of 244 positions", trend: "up" },
   { label: "Units", value: 24.6, decimals: 1, prefix: "+", suffix: "u", detail: "On a 1u flat stake", trend: "up" },
-  { label: "Closing line value", value: 3.1, decimals: 1, prefix: "+", suffix: "%", detail: "Beat close on 63%", trend: "up" },
+  { label: "Closing line value", value: 3.1, decimals: 1, prefix: "+", suffix: "%", detail: "Beat close on 63%", trend: "up", feature: "closing_line_value" },
   { label: "Research published", value: 218, decimals: 0, detail: "Reports this season", trend: "flat" },
 ];
 

@@ -5,6 +5,7 @@ import { GlobalSearch } from "./GlobalSearch";
 import { NotificationsButton } from "./NotificationsButton";
 import { ProfileMenu } from "./ProfileMenu";
 import { MembershipBadge } from "./MembershipBadge";
+import { TierSwitcher } from "@/components/subscription/TierSwitcher";
 import { titleForPath } from "./nav-config";
 import { Separator } from "@/components/ui/separator";
 import { useShell } from "@/components/layout/shell-context";
@@ -63,6 +64,8 @@ export function TopNav() {
 
       {/* Right: status, notifications, identity */}
       <div className="flex shrink-0 items-center gap-1.5">
+        {/* Dev-only; renders nothing in a production build. */}
+        <TierSwitcher className="hidden xl:flex" />
         <MembershipBadge className="hidden md:inline-flex" />
         <Separator orientation="vertical" className="mx-1 hidden h-5 md:block" />
         <NotificationsButton />

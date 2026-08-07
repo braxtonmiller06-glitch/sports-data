@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WidgetCard } from "./WidgetCard";
 import { briefingFixture } from "@/data/dashboardFixtures";
+import { ROUTES } from "@/lib/routes";
 
 /** The written read on the slate. Preview only; the full issue lives at /briefing. */
 export function MorningBriefing({ className }: { className?: string }) {
@@ -37,7 +38,7 @@ export function MorningBriefing({ className }: { className?: string }) {
 
         <div className="mt-auto pt-1">
           <Button variant="secondary" asChild>
-            <Link to="/briefing">
+            <Link to={ROUTES.briefing}>
               Read full briefing
               <ArrowRight />
             </Link>
