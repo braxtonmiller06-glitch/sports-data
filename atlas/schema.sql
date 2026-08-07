@@ -75,6 +75,25 @@ create table if not exists picks (
 create index if not exists idx_picks_external_event_id on picks (external_event_id);
 create index if not exists idx_picks_settles_at on picks (settles_at);
 
+-- Cross-run de-duplication. atlas/loadplays.py de-dupes within a single file,
+-- but nothing stopped the same file being loaded twice -- which double-counts
+-- every pick in the record and the P/L. This is the guard that actually holds.
+--
+-- The settles_at date is part of the key on purpose: an MLB series plays the
+-- same two teams three nights running, and those are three different picks,
+-- not one repeated. NULLS NOT DISTINCT so that two picks with a null `line`
+-- (moneylines) still collide -- by default Postgres treats each NULL as
+-- unique, which would let every moneyline through twice.
+--
+-- If this fails to create, the table already contains duplicates. Find them:
+--   select sport, home_team, away_team, market_type, subject, selection_side,
+--          line, settles_at::date, count(*)
+--     from picks group by 1,2,3,4,5,6,7,8 having count(*) > 1;
+create unique index if not exists uq_picks_dedupe
+    on picks (sport, home_team, away_team, market_type, subject,
+              selection_side, line, (settles_at::date))
+    nulls not distinct;
+
 -- One row per Supabase auth user, tracking subscription state for the
 -- frontend's paywall gating. subscription_status is driven by Stripe
 -- webhooks (backend/routes/billing.py, not yet built) -- defaults to
@@ -93,14 +112,26 @@ create table if not exists profiles (
 );
 
 -- Auto-create a profile row whenever a new auth user signs up.
+-- SECURITY DEFINER runs as the function's owner (a superuser), so an
+-- unqualified name inside it resolves against the *caller's* search_path.
+-- Anyone who can create objects in a schema earlier in that path can shadow
+-- a table or operator here and have it execute with the owner's privileges.
+-- Pinning search_path closes that; Supabase's database linter flags exactly
+-- this ("function_search_path_mutable"). pg_temp goes last because it is
+-- otherwise searched first and is writable by any session.
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
     insert into public.profiles (id, email)
-    values (new.id, new.email);
+    values (new.id, new.email)
+    on conflict (id) do nothing;
     return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 create or replace trigger on_auth_user_created
     after insert on auth.users

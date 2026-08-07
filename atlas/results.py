@@ -15,6 +15,7 @@ if (selection_side's own score + line) > opponent's score, pushes if equal.
 E.g. selection_side="home", line=-3.5 means "home -3.5"; home covers if
 home_score - 3.5 > away_score.
 """
+import math
 from datetime import datetime, timedelta, timezone
 
 from atlas import db
@@ -46,6 +47,31 @@ def _find_final_game(sqla_db, pick: dict) -> dict | None:
     return None
 
 
+def _as_float(value) -> float | None:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if math.isfinite(result) else None
+
+
+def _line_of(pick: dict) -> float | None:
+    """The pick's line as a float, or None if it hasn't got a usable one.
+
+    Postgres `numeric` arrives over PostgREST as a JSON number most of the
+    time but as a string often enough (precision-preserving serialization)
+    that adding it straight to an int raises TypeError mid-grade.
+    """
+    raw = pick.get("line")
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
+
+
 def grade_pick(game: dict, pick: dict) -> str | None:
     """Return 'WIN' | 'LOSS' | 'PUSH', or None if not gradeable yet (game not
     final, or a required field like `line` is missing).
@@ -64,25 +90,33 @@ def grade_pick(game: dict, pick: dict) -> str | None:
         return "WIN" if side == winner else "LOSS"
 
     if market_type == "spread":
-        if pick.get("line") is None:
+        line = _line_of(pick)
+        if line is None:
+            return None
+        if side not in ("home", "away"):
+            # A spread has no "over" or "draw" side. Grading one as if it did
+            # would quietly score it against the away team.
             return None
         own_score = home_score if side == "home" else away_score
         opp_score = away_score if side == "home" else home_score
-        adjusted = own_score + pick["line"]
-        if adjusted == opp_score:
+        adjusted = own_score + line
+        # Lines land on halves and quarters, which are exact in binary, but
+        # the tolerance costs nothing and a push graded as a loss is money.
+        if math.isclose(adjusted, opp_score, abs_tol=1e-9):
             return "PUSH"
         return "WIN" if adjusted > opp_score else "LOSS"
 
     if market_type == "total":
-        if pick.get("line") is None:
+        line = _line_of(pick)
+        if line is None:
             return None
         total = home_score + away_score
-        if total == pick["line"]:
+        if math.isclose(total, line, abs_tol=1e-9):
             return "PUSH"
         if side == "over":
-            return "WIN" if total > pick["line"] else "LOSS"
+            return "WIN" if total > line else "LOSS"
         if side == "under":
-            return "WIN" if total < pick["line"] else "LOSS"
+            return "WIN" if total < line else "LOSS"
         return None
 
     return None
@@ -135,7 +169,14 @@ def run(dry_run: bool = False, now: datetime | None = None) -> dict:
                 continue
 
             if not dry_run:
-                db.mark_graded(pick["id"], result, now.isoformat())
+                try:
+                    db.mark_graded(pick["id"], result, now.isoformat())
+                except Exception as exc:
+                    # Don't count it as graded if the write didn't land --
+                    # the caption would report a record that isn't in the
+                    # database, and the next run would grade it again.
+                    errors.append({"pick_id": pick["id"], "subject": pick["subject"], "error": str(exc)})
+                    continue
             graded.append(
                 {
                     "pick_id": pick["id"],
@@ -167,11 +208,15 @@ def caption(summary: dict) -> str:
 
     profit = 0.0
     for g in graded:
-        stake = g.get("stake")
-        if not stake:
+        # Both columns are Postgres `numeric`, which PostgREST may hand back
+        # as a string. Multiplying a str by a float raises; a caption that
+        # crashes takes the whole Discord command down with it.
+        stake = _as_float(g.get("stake"))
+        odds = _as_float(g.get("decimal_odds"))
+        if not stake or odds is None:
             continue
         if g["result"] == "WIN":
-            profit += stake * (g["decimal_odds"] - 1)
+            profit += stake * (odds - 1)
         elif g["result"] == "LOSS":
             profit -= stake
 

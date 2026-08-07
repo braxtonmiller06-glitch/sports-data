@@ -25,15 +25,17 @@ export function useProfile() {
       .from("profiles")
       .select("id, email, subscription_status")
       .eq("id", user.id)
-      .single()
+      // maybeSingle, not single: single() treats "no row" as an error, and a
+      // user who signed up before the handle_new_user trigger existed has no
+      // profile row. That is a missing row, not a failure, and logging it as
+      // an error hides real ones.
+      .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) {
           console.error("failed to load profile:", error.message);
-          setProfile(null);
-        } else {
-          setProfile(data as Profile);
         }
+        setProfile((data as Profile | null) ?? null);
         setLoading(false);
       });
     return () => {

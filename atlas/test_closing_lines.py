@@ -79,23 +79,45 @@ class FindPicksDueTests(unittest.TestCase):
 
 
 class MatchOddsValueTests(unittest.TestCase):
+    """Expected values here are DECIMAL odds even where the input is American.
+
+    These tests previously asserted the raw American number came back
+    unchanged (-150.0, -110.0). That was the bug: the only consumer,
+    compute_clv_pct, divides one price by another, which is meaningless
+    unless both are decimal. -150 straight into that formula produced a
+    confident, wildly wrong CLV that got written to the database as fact.
+    _match_odds_value now normalizes; see _to_decimal_odds.
+    """
+
     def test_matches_plain_home_away_labels(self):
         odds = {"Home": "-150", "Away": "+130"}
-        self.assertEqual(closing_lines._match_odds_value(odds, "home", "Yankees", "Red Sox"), -150.0)
-        self.assertEqual(closing_lines._match_odds_value(odds, "away", "Yankees", "Red Sox"), 130.0)
+        # -150 -> 1 + 100/150; +130 -> 1 + 130/100
+        self.assertAlmostEqual(
+            closing_lines._match_odds_value(odds, "home", "Yankees", "Red Sox"), 1.6667, places=3
+        )
+        self.assertAlmostEqual(
+            closing_lines._match_odds_value(odds, "away", "Yankees", "Red Sox"), 2.30, places=3
+        )
 
     def test_matches_team_name_as_label(self):
         odds = {"Yankees": "1.85", "Red Sox": "2.05"}
+        # Already decimal -- passed through untouched.
         self.assertEqual(closing_lines._match_odds_value(odds, "home", "Yankees", "Red Sox"), 1.85)
 
-    def test_matches_spread_style_labels_by_substring(self):
+    def test_matches_spread_style_labels(self):
         odds = {"Home -3.5": "-110", "Away +3.5": "-110"}
-        self.assertEqual(closing_lines._match_odds_value(odds, "home", "Yankees", "Red Sox"), -110.0)
+        self.assertAlmostEqual(
+            closing_lines._match_odds_value(odds, "home", "Yankees", "Red Sox"), 1.9091, places=3
+        )
 
     def test_matches_total_style_labels(self):
         odds = {"Over 45.5": "-105", "Under 45.5": "-115"}
-        self.assertEqual(closing_lines._match_odds_value(odds, "over", "Yankees", "Red Sox"), -105.0)
-        self.assertEqual(closing_lines._match_odds_value(odds, "under", "Yankees", "Red Sox"), -115.0)
+        self.assertAlmostEqual(
+            closing_lines._match_odds_value(odds, "over", "Yankees", "Red Sox"), 1.9524, places=3
+        )
+        self.assertAlmostEqual(
+            closing_lines._match_odds_value(odds, "under", "Yankees", "Red Sox"), 1.8696, places=3
+        )
 
     def test_no_match_returns_none_rather_than_guessing(self):
         odds = {"Something Unrecognized": "-110"}

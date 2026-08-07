@@ -58,6 +58,36 @@ export const CURRENCY_SYMBOL: Record<Currency, string> = {
 
 const COLUMNS = Object.keys(DEFAULT_SETTINGS).join(", ");
 
+export type SettingsErrors = Partial<Record<keyof UserSettings, string>>;
+
+/** Mirrors the check constraints in atlas/schema_settings.sql -- keep the two
+ *  in sync. Without this, a bankroll of -50 or a 40% unit size reaches the
+ *  database, trips a constraint, and comes back as an opaque failure with no
+ *  indication of which field is wrong. Pure, so it can be tested on its own. */
+export function validateSettings(s: UserSettings): SettingsErrors {
+  const errors: SettingsErrors = {};
+
+  if (!Number.isFinite(s.bankroll) || s.bankroll < 0) {
+    errors.bankroll = "Bankroll can't be negative.";
+  }
+  if (!Number.isFinite(s.unit_value) || s.unit_value <= 0) {
+    errors.unit_value = "Unit size must be greater than zero.";
+  } else if (s.unit_mode === "percent" && s.unit_value > 25) {
+    errors.unit_value = "A unit above 25% of your roll isn't a stake, it's a coin flip on the account.";
+  }
+  if (!Number.isFinite(s.max_bet_units) || s.max_bet_units < 1 || s.max_bet_units > 25) {
+    errors.max_bet_units = "Max bet must be between 1 and 25 units.";
+  }
+  if (
+    s.weekly_loss_limit_units !== null &&
+    (!Number.isFinite(s.weekly_loss_limit_units) || s.weekly_loss_limit_units < 0)
+  ) {
+    errors.weekly_loss_limit_units = "A loss limit can't be negative.";
+  }
+
+  return errors;
+}
+
 export function useSettings() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
@@ -69,6 +99,7 @@ export function useSettings() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<SettingsErrors>({});
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   // Guards against a save that resolves after the component unmounts, and
@@ -122,6 +153,14 @@ export function useSettings() {
   const update = useCallback(<K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSavedAt(null);
+    // Clear this field's error as soon as it's touched -- leaving it up while
+    // the user is mid-correction reads as "still wrong".
+    setFieldErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }, []);
 
   const save = useCallback(async (): Promise<boolean> => {
@@ -129,6 +168,16 @@ export function useSettings() {
       setError("You need to be signed in to save settings.");
       return false;
     }
+
+    // Check locally first so the user gets told which field is wrong, rather
+    // than a round trip that comes back as a constraint violation.
+    const found = validateSettings(settings);
+    setFieldErrors(found);
+    if (Object.keys(found).length > 0) {
+      setError("Some values are out of range — see the highlighted fields.");
+      return false;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -151,7 +200,7 @@ export function useSettings() {
     return true;
   }, [user, settings]);
 
-  return { settings, update, save, loading, loaded, saving, error, savedAt };
+  return { settings, update, save, loading, loaded, saving, error, fieldErrors, savedAt };
 }
 
 /** Turns the stored bankroll settings into the numbers actually shown to the

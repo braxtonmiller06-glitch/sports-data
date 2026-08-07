@@ -51,3 +51,20 @@ CACHE_TTL_SECONDS = {
 }
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./sports_data.db")
+
+# Browser origins allowed to call this API, comma-separated. The default is
+# local dev only: a wildcard here would let any site on the internet read the
+# API through a visitor's browser, and "tighten it later" never happens.
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
+]
+
+# When false (the default), error responses carry a generic message and the
+# detail goes to the server log instead. Upstream error bodies and database
+# errors both quote connection strings and keys often enough that echoing
+# them to an HTTP client is a credential leak waiting to happen.
+DEBUG_ERRORS = os.getenv("DEBUG_ERRORS", "").lower() in ("1", "true", "yes")

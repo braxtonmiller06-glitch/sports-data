@@ -66,12 +66,15 @@ create table if not exists user_settings (
 );
 
 create or replace function public.touch_user_settings()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
 begin
     new.updated_at = now();
     return new;
 end;
-$$ language plpgsql;
+$$;
 
 create or replace trigger user_settings_touch
     before update on user_settings
@@ -80,15 +83,22 @@ create or replace trigger user_settings_touch
 -- Give every new signup a settings row so the app reads defaults from one place
 -- (the column defaults above) rather than duplicating them in TypeScript.
 -- Existing users get a row on first save via the frontend's upsert.
+-- search_path is pinned for the same reason as handle_new_user in schema.sql:
+-- a SECURITY DEFINER function with a mutable search_path is a privilege
+-- escalation path, and Supabase's linter flags it.
 create or replace function public.handle_new_user_settings()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
     insert into public.user_settings (user_id)
     values (new.id)
     on conflict (user_id) do nothing;
     return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 create or replace trigger on_auth_user_created_settings
     after insert on auth.users

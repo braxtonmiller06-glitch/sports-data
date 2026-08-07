@@ -3,10 +3,16 @@
 API-Sports enforces the free-tier 100 req/day limit per product (American
 Football, Basketball, Baseball, Football), not globally -- see config.py.
 Every outbound call to fetchers/api_sports.py must reserve quota here first.
+
+Concurrency: the reservation is a single conditional UPDATE, not a read
+followed by a write. Two workers that both see 99 must not both be allowed
+to write 100, and under uvicorn's default threadpool (or more than one
+worker process) a read-then-write does exactly that.
 """
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.config import (
@@ -16,6 +22,10 @@ from backend.config import (
     WARNING_THRESHOLD_RATIO,
 )
 from backend.models import ApiUsage
+
+# A losing race re-reads and retries. Two contenders need at most one extra
+# pass each; the bound just stops a pathological loop.
+_MAX_RESERVE_ATTEMPTS = 5
 
 
 class RateLimitExceeded(Exception):
@@ -41,28 +51,56 @@ def check_and_increment(db: Session, product: str) -> int:
     """Reserve one request against today's quota for `product`.
 
     Raises RateLimitExceeded if the product is already at the daily cap.
-    Call this immediately before making the actual HTTP request.
+    Call this immediately before each actual HTTP request -- including each
+    retry, since every retry is a real request against the provider's count.
     """
     today = _today()
-    row = db.execute(
-        select(ApiUsage).where(ApiUsage.product == product, ApiUsage.date == today)
-    ).scalar_one_or_none()
-    current = row.count if row else 0
 
-    if current >= DAILY_LIMIT_FREE_TIER:
-        raise RateLimitExceeded(product, DAILY_LIMIT_FREE_TIER)
+    for _ in range(_MAX_RESERVE_ATTEMPTS):
+        # The limit check lives in the WHERE clause so the check and the
+        # increment are one atomic statement. RETURNING hands back the value
+        # this statement wrote -- re-reading with a second SELECT would race
+        # another worker's increment and report a count that isn't ours.
+        result = db.execute(
+            update(ApiUsage)
+            .where(
+                ApiUsage.product == product,
+                ApiUsage.date == today,
+                ApiUsage.count < DAILY_LIMIT_FREE_TIER,
+            )
+            .values(count=ApiUsage.count + 1)
+            .returning(ApiUsage.count)
+        )
+        reserved = result.scalar_one_or_none()
 
-    if row:
-        row.count = current + 1
-    else:
-        row = ApiUsage(product=product, date=today, count=1)
-        db.add(row)
-    db.commit()
+        if reserved is not None:
+            db.commit()
+            if reserved >= DAILY_LIMIT_FREE_TIER * WARNING_THRESHOLD_RATIO:
+                print(f"[rate_limiter] WARNING: '{product}' at {reserved}/{DAILY_LIMIT_FREE_TIER} requests today")
+            return reserved
 
-    new_count = current + 1
-    if new_count >= DAILY_LIMIT_FREE_TIER * WARNING_THRESHOLD_RATIO:
-        print(f"[rate_limiter] WARNING: '{product}' at {new_count}/{DAILY_LIMIT_FREE_TIER} requests today")
-    return new_count
+        # Nothing updated: either today's row is already at the cap, or it
+        # doesn't exist yet. Those need opposite responses, so distinguish
+        # them rather than guessing.
+        db.rollback()
+        existing = db.execute(
+            select(ApiUsage).where(ApiUsage.product == product, ApiUsage.date == today)
+        ).scalar_one_or_none()
+
+        if existing is not None:
+            raise RateLimitExceeded(product, DAILY_LIMIT_FREE_TIER)
+
+        try:
+            db.add(ApiUsage(product=product, date=today, count=1))
+            db.commit()
+            return 1
+        except IntegrityError:
+            # A concurrent worker created today's row between our SELECT and
+            # our INSERT. The unique constraint on (product, date) caught it;
+            # loop back round and take the UPDATE path against their row.
+            db.rollback()
+
+    raise RateLimitExceeded(product, DAILY_LIMIT_FREE_TIER)
 
 
 def consecutive_days_at_limit(db: Session, product: str, days: int = UPGRADE_TRIGGER_CONSECUTIVE_DAYS) -> bool:

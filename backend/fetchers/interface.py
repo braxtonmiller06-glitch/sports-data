@@ -6,6 +6,7 @@ right product -> normalize -> upsert into the DB -> populate the cache ->
 return normalized dicts. Callers never touch fetchers/api_sports.py or
 fetchers/normalize.py directly.
 """
+import logging
 from datetime import date as date_cls
 from datetime import datetime, timezone
 from typing import Optional
@@ -15,9 +16,19 @@ from sqlalchemy.orm import Session
 from backend import cache
 from backend.config import SPORTS
 from backend.fetchers import api_sports
-from backend.fetchers.normalize import NORMALIZERS, _record, normalize_injury, normalize_odds, normalize_player
+from backend.fetchers.normalize import (
+    NORMALIZERS,
+    MissingUpstreamId,
+    _dig,
+    _record,
+    normalize_injury,
+    normalize_odds,
+    normalize_player,
+)
 from backend.models import Game, Odds, Team
 from backend.rate_limiter import check_and_increment
+
+log = logging.getLogger(__name__)
 
 
 class UnknownSport(Exception):
@@ -46,6 +57,32 @@ def _normalizer(product: str, kind: str):
 
 def _current_year() -> str:
     return str(date_cls.today().year)
+
+
+def _reserve(db: Session, product: str):
+    """A quota reservation callable for api_sports.request.
+
+    Passed per-attempt rather than called once, so a request that retries
+    three times consumes three units of quota -- which is what the provider
+    actually counts against the daily limit.
+    """
+    return lambda: check_and_increment(db, product)
+
+
+def _normalize_all(normalize, sport: str, items: list, kind: str) -> list[dict]:
+    """Normalize a batch, dropping records that can't be given a primary key.
+
+    One malformed entry in a 200-game response shouldn't fail the request --
+    but it also shouldn't be silently folded onto a shared "sport_None" key,
+    so it's dropped loudly instead.
+    """
+    out = []
+    for item in items:
+        try:
+            out.append(normalize(sport, item))
+        except MissingUpstreamId as exc:
+            log.warning("skipping unusable %s %s record: %s", sport, kind, exc)
+    return out
 
 
 def _upsert_games(db: Session, games: list[dict]) -> None:
@@ -129,12 +166,14 @@ def get_games(db: Session, sport: str, date: Optional[str] = None) -> list[dict]
     if cached is not None:
         return cached
 
-    check_and_increment(db, config["product"])
     raw = api_sports.request(
-        config["product"], "/games", params={"league": config["league_id"], "date": date}
+        config["product"],
+        "/games",
+        params={"league": config["league_id"], "date": date},
+        before_attempt=_reserve(db, config["product"]),
     )
     normalize = _normalizer(config["product"], "game")
-    internal_games = [normalize(sport, item) for item in raw.get("response", [])]
+    internal_games = _normalize_all(normalize, sport, raw.get("response", []), "game")
     _upsert_games(db, internal_games)
     games = [_public_game(g) for g in internal_games]
     cache.set(key, "games", games)
@@ -148,10 +187,14 @@ def get_teams(db: Session, sport: str) -> list[dict]:
     if cached is not None:
         return cached
 
-    check_and_increment(db, config["product"])
-    raw = api_sports.request(config["product"], "/teams", params={"league": config["league_id"]})
+    raw = api_sports.request(
+        config["product"],
+        "/teams",
+        params={"league": config["league_id"]},
+        before_attempt=_reserve(db, config["product"]),
+    )
     normalize = _normalizer(config["product"], "team")
-    internal_teams = [normalize(sport, item) for item in raw.get("response", [])]
+    internal_teams = _normalize_all(normalize, sport, raw.get("response", []), "team")
     _upsert_teams(db, internal_teams)
     teams = [_public_team(t) for t in internal_teams]
     cache.set(key, "teams", teams)
@@ -166,16 +209,28 @@ def get_odds(db: Session, sport: str, date: Optional[str] = None) -> list[dict]:
     if cached is not None:
         return cached
 
-    check_and_increment(db, config["product"])
     raw = api_sports.request(
-        config["product"], "/odds", params={"league": config["league_id"], "date": date}
+        config["product"],
+        "/odds",
+        params={"league": config["league_id"], "date": date},
+        before_attempt=_reserve(db, config["product"]),
     )
     odds: list[dict] = []
     now = datetime.now(timezone.utc).isoformat()
     for entry in raw.get("response", []):
-        game_id = entry.get("game", {}).get("id") or entry.get("fixture", {}).get("id")
-        for bookmaker in entry.get("bookmakers", []):
-            normalized = normalize_odds(sport, game_id, bookmaker)
+        if not isinstance(entry, dict):
+            continue
+        # _dig, not entry.get("game", {}) -- an explicit JSON null for "game"
+        # makes .get() return None and the chained .get("id") an AttributeError.
+        game_id = _dig(entry, "game", "id") or _dig(entry, "fixture", "id")
+        for bookmaker in entry.get("bookmakers") or []:
+            if not isinstance(bookmaker, dict):
+                continue
+            try:
+                normalized = normalize_odds(sport, game_id, bookmaker)
+            except MissingUpstreamId as exc:
+                log.warning("skipping unusable %s odds record: %s", sport, exc)
+                continue
             normalized["timestamp"] = now
             odds.append(normalized)
     _persist_odds(db, odds)
@@ -191,14 +246,20 @@ def get_players(db: Session, sport: str, team: Optional[str] = None, search: Opt
     if cached is not None:
         return cached
 
-    check_and_increment(db, config["product"])
     params = {"season": season}
     if team:
         params["team"] = team
     if search:
         params["search"] = search
-    raw = api_sports.request(config["product"], "/players", params=params)
-    players = [normalize_player(sport, item.get("player", item)) for item in raw.get("response", [])]
+    raw = api_sports.request(
+        config["product"], "/players", params=params, before_attempt=_reserve(db, config["product"])
+    )
+    players = _normalize_all(
+        normalize_player,
+        sport,
+        [item.get("player", item) if isinstance(item, dict) else item for item in raw.get("response", [])],
+        "player",
+    )
     cache.set(key, "players", players)
     return players
 
@@ -211,9 +272,11 @@ def get_standings(db: Session, sport: str, season: Optional[str] = None) -> list
     if cached is not None:
         return cached
 
-    check_and_increment(db, config["product"])
     raw = api_sports.request(
-        config["product"], "/standings", params={"league": config["league_id"], "season": season}
+        config["product"],
+        "/standings",
+        params={"league": config["league_id"], "season": season},
+        before_attempt=_reserve(db, config["product"]),
     )
     normalize = _normalizer(config["product"], "standing")
     # Some products nest standings one level deeper (list-of-lists per conference/division).
@@ -235,8 +298,12 @@ def get_injuries(db: Session, sport: str) -> list[dict]:
     if cached is not None:
         return cached
 
-    check_and_increment(db, config["product"])
-    raw = api_sports.request(config["product"], "/injuries", params={"league": config["league_id"]})
-    injuries = [normalize_injury(sport, item) for item in raw.get("response", [])]
+    raw = api_sports.request(
+        config["product"],
+        "/injuries",
+        params={"league": config["league_id"]},
+        before_attempt=_reserve(db, config["product"]),
+    )
+    injuries = [normalize_injury(sport, item) for item in raw.get("response", []) if isinstance(item, dict)]
     cache.set(key, "injuries", injuries)
     return injuries

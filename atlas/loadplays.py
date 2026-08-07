@@ -158,12 +158,29 @@ def build_pick_row(play: dict, games_by_sport: dict[str, list[dict]]) -> dict:
     }
 
 
-def load_plays(plays_path: str, game_date: date | None = None) -> None:
+def pick_fingerprint(row: dict) -> str:
+    """Identity of a pick for de-duplication.
+
+    A play is the same play if it's the same side of the same market on the
+    same fixture. Odds and confidence are deliberately excluded: a re-run
+    after a line move is still the same play, and inserting it twice would
+    double-count it in the record and the P/L.
+    """
+    return "|".join(
+        str(row.get(field, "")).strip().lower()
+        for field in ("sport", "home_team", "away_team", "market_type", "subject", "selection_side", "line")
+    )
+
+
+def load_plays(plays_path: str, game_date: date | None = None) -> dict:
     game_date = game_date or date.today()
     with open(plays_path) as f:
         plays = json.load(f)
 
-    sports = {p["sport"] for p in plays}
+    if not isinstance(plays, list):
+        raise ValueError(f"{plays_path} must contain a JSON list of plays, got {type(plays).__name__}")
+
+    sports = {p["sport"] for p in plays if isinstance(p, dict) and p.get("sport")}
     games_by_sport: dict[str, list[dict]] = {}
     for sport in sports:
         try:
@@ -172,8 +189,15 @@ def load_plays(plays_path: str, game_date: date | None = None) -> None:
             print(f"WARNING: could not fetch BALLDONTLIE games for '{sport}': {exc}")
             games_by_sport[sport] = []
 
-    inserted, skipped = 0, 0
+    inserted, skipped, duplicates = 0, 0, 0
+    failed: list[dict] = []
+    seen: set[str] = set()
+
     for play in plays:
+        if not isinstance(play, dict):
+            print(f"SKIPPING entry: expected an object, got {type(play).__name__}")
+            skipped += 1
+            continue
         try:
             row = build_pick_row(play, games_by_sport)
             validate_pick(row)
@@ -181,16 +205,50 @@ def load_plays(plays_path: str, game_date: date | None = None) -> None:
             print(f"SKIPPING pick ({play.get('subject', '?')}): invalid {exc.field} -- {exc.reason}")
             skipped += 1
             continue
-        except (ValueError, KeyError) as exc:
+        except (ValueError, KeyError, TypeError) as exc:
             print(f"SKIPPING pick ({play.get('subject', '?')}): {exc}")
             skipped += 1
             continue
 
-        db.insert_pick(row)
+        # Guards against the same file being loaded twice, and against a file
+        # that lists the same play more than once. This is only within-run --
+        # a cross-run guard needs a unique index in Postgres, see schema.sql.
+        fingerprint = pick_fingerprint(row)
+        if fingerprint in seen:
+            print(f"SKIPPING duplicate pick in this file: {row['subject']} ({row['market_type']})")
+            duplicates += 1
+            continue
+        seen.add(fingerprint)
+
+        try:
+            db.insert_pick(row)
+        except Exception as exc:
+            # An insert failure used to abort the run, so a single network
+            # blip on play 3 of 12 silently lost the other nine. Record it
+            # and keep going; the summary is what the caller checks.
+            print(f"FAILED to insert pick ({row['subject']}): {exc}")
+            failed.append({"subject": row["subject"], "error": str(exc)})
+            continue
         inserted += 1
 
-    print(f"Done: {inserted} inserted, {skipped} skipped")
+    summary = {
+        "inserted": inserted,
+        "skipped": skipped,
+        "duplicates": duplicates,
+        "failed": failed,
+    }
+    print(
+        f"Done: {inserted} inserted, {skipped} skipped, "
+        f"{duplicates} in-file duplicates, {len(failed)} failed"
+    )
+    return summary
 
 
 if __name__ == "__main__":
-    load_plays(sys.argv[1])
+    if len(sys.argv) < 2:
+        print("usage: python -m atlas.loadplays <plays.json>", file=sys.stderr)
+        raise SystemExit(2)
+    result = load_plays(sys.argv[1])
+    # Non-zero exit so a cron wrapper notices failed inserts instead of
+    # treating a run that dropped half the card as a success.
+    raise SystemExit(1 if result["failed"] else 0)

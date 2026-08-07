@@ -10,6 +10,7 @@ where b = decimal_odds - 1, p = model probability, q = 1 - p. That's what's
 implemented below, then scaled by a fractional multiplier (quarter-Kelly by
 default) and hard-capped as a percent of bankroll.
 """
+import math
 from abc import ABC, abstractmethod
 
 
@@ -30,11 +31,18 @@ class FractionalKellyBetSizer(BetSizer):
         self.cap_pct = cap_pct
 
     def size(self, model_probability: float, decimal_odds: float, bankroll: float) -> float:
-        if decimal_odds <= 1.0:
+        # Reject the inputs that produce a confidently wrong number rather
+        # than an obviously wrong one. A negative bankroll used to return a
+        # negative stake, which reads downstream as a bet on the other side.
+        if not all(math.isfinite(v) for v in (model_probability, decimal_odds, bankroll)):
+            return 0.0
+        if decimal_odds <= 1.0 or bankroll <= 0.0:
             return 0.0
 
+        # A probability outside [0, 1] is a caller bug, but clamping keeps it
+        # from turning into a maximum-size bet via a negative q.
+        p = max(0.0, min(1.0, model_probability))
         b = decimal_odds - 1.0
-        p = model_probability
         q = 1.0 - p
         full_kelly = (b * p - q) / b
 

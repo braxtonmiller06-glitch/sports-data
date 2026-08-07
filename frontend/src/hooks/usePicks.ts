@@ -25,7 +25,7 @@ function rowToPick(row: PickRow): Pick {
     subject: row.subject,
     market_type: row.market_type,
     line: row.line,
-    side: row.selection_side.toUpperCase() as Pick["side"],
+    side: (row.selection_side ?? "").toUpperCase() as Pick["side"],
     decimal_odds: row.decimal_odds,
     model_probability: row.model_probability,
     market_probability: row.market_probability,
@@ -56,7 +56,11 @@ export function usePicks() {
         if (error) {
           setError(error.message);
         } else {
-          setPicks((data as PickRow[]).map(rowToPick));
+          // `data` is null on some error-adjacent responses even when `error`
+          // is unset (RLS returning nothing, an aborted request). Calling
+          // .map on it blanks the dashboard with a runtime TypeError instead
+          // of showing the empty state.
+          setPicks(((data as PickRow[] | null) ?? []).map(rowToPick));
         }
         setLoading(false);
       });

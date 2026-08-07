@@ -21,6 +21,24 @@ def _dig(obj: Any, *path: str, default=None):
     return current if current is not None else default
 
 
+def _scoped_id(sport: str, raw_id: Any) -> Optional[str]:
+    """Namespace an upstream id to this sport, or None if there isn't one.
+
+    Never interpolate a raw id straight into an f-string: a missing id
+    produces the literal string "wnba_None", and these ids are primary keys.
+    Every id-less row would then collide onto that one key and overwrite each
+    other, which reads as "the API only returned one game" rather than as a
+    parse failure.
+    """
+    if raw_id is None or raw_id == "":
+        return None
+    return f"{sport}_{raw_id}"
+
+
+class MissingUpstreamId(Exception):
+    """Raised when a record can't be given a stable primary key."""
+
+
 def _record(wins: Optional[int], losses: Optional[int]) -> Optional[str]:
     if wins is None or losses is None:
         return None
@@ -39,20 +57,22 @@ def _win_pct(wins: int, losses: int) -> Optional[float]:
 
 
 def normalize_game_american_football(sport: str, raw: dict) -> dict:
-    game_id = _dig(raw, "game", "id")
+    game_id = _scoped_id(sport, _dig(raw, "game", "id"))
+    if game_id is None:
+        raise MissingUpstreamId(f"{sport} game has no id: {str(raw)[:120]}")
     status_short = _dig(raw, "game", "status", "short", default="")
     home_score = _dig(raw, "scores", "home", "total")
     away_score = _dig(raw, "scores", "away", "total")
     final = status_short in ("FT", "AOT")
 
     return {
-        "id": f"{sport}_{game_id}",
+        "id": game_id,
         "sport": sport,
         "date": _dig(raw, "game", "date", "date", default=""),
         "status": _dig(raw, "game", "status", "long", default=status_short),
-        "home_team_id": f"{sport}_{_dig(raw, 'teams', 'home', 'id')}",
+        "home_team_id": _scoped_id(sport, _dig(raw, "teams", "home", "id")),
         "home_team_name": _dig(raw, "teams", "home", "name"),
-        "away_team_id": f"{sport}_{_dig(raw, 'teams', 'away', 'id')}",
+        "away_team_id": _scoped_id(sport, _dig(raw, "teams", "away", "id")),
         "away_team_name": _dig(raw, "teams", "away", "name"),
         "home_score": home_score,
         "away_score": away_score,
@@ -61,9 +81,11 @@ def normalize_game_american_football(sport: str, raw: dict) -> dict:
 
 
 def normalize_team_american_football(sport: str, raw: dict) -> dict:
-    team_id = raw.get("id")
+    team_id = _scoped_id(sport, raw.get("id"))
+    if team_id is None:
+        raise MissingUpstreamId(f"{sport} team has no id: {str(raw)[:120]}")
     return {
-        "id": f"{sport}_{team_id}",
+        "id": team_id,
         "sport": sport,
         "name": raw.get("name"),
         "abbreviation": raw.get("code"),
@@ -80,7 +102,7 @@ def normalize_standing_american_football(sport: str, raw: dict) -> dict:
     losses = _dig(raw, "lost") or 0
     return {
         "sport": sport,
-        "team_id": f"{sport}_{_dig(raw, 'team', 'id')}",
+        "team_id": _scoped_id(sport, _dig(raw, "team", "id")),
         "team_name": _dig(raw, "team", "name"),
         "wins": wins,
         "losses": losses,
@@ -98,20 +120,22 @@ def normalize_standing_american_football(sport: str, raw: dict) -> dict:
 
 
 def normalize_game_basketball(sport: str, raw: dict) -> dict:
-    game_id = raw.get("id")
+    game_id = _scoped_id(sport, raw.get("id"))
+    if game_id is None:
+        raise MissingUpstreamId(f"{sport} game has no id: {str(raw)[:120]}")
     status_short = _dig(raw, "status", "short", default="")
     home_score = _dig(raw, "scores", "home", "total")
     away_score = _dig(raw, "scores", "away", "total")
     final = status_short in ("FT", "AOT")
 
     return {
-        "id": f"{sport}_{game_id}",
+        "id": game_id,
         "sport": sport,
         "date": (raw.get("date") or "")[:10],
         "status": _dig(raw, "status", "long", default=status_short),
-        "home_team_id": f"{sport}_{_dig(raw, 'teams', 'home', 'id')}",
+        "home_team_id": _scoped_id(sport, _dig(raw, "teams", "home", "id")),
         "home_team_name": _dig(raw, "teams", "home", "name"),
-        "away_team_id": f"{sport}_{_dig(raw, 'teams', 'away', 'id')}",
+        "away_team_id": _scoped_id(sport, _dig(raw, "teams", "away", "id")),
         "away_team_name": _dig(raw, "teams", "away", "name"),
         "home_score": home_score,
         "away_score": away_score,
@@ -120,9 +144,11 @@ def normalize_game_basketball(sport: str, raw: dict) -> dict:
 
 
 def normalize_team_basketball(sport: str, raw: dict) -> dict:
-    team_id = raw.get("id")
+    team_id = _scoped_id(sport, raw.get("id"))
+    if team_id is None:
+        raise MissingUpstreamId(f"{sport} team has no id: {str(raw)[:120]}")
     return {
-        "id": f"{sport}_{team_id}",
+        "id": team_id,
         "sport": sport,
         "name": raw.get("name"),
         "abbreviation": raw.get("code") or raw.get("nickname"),
@@ -139,7 +165,7 @@ def normalize_standing_basketball(sport: str, raw: dict) -> dict:
     losses = _dig(raw, "games", "lose", "total") or 0
     return {
         "sport": sport,
-        "team_id": f"{sport}_{_dig(raw, 'team', 'id')}",
+        "team_id": _scoped_id(sport, _dig(raw, "team", "id")),
         "team_name": _dig(raw, "team", "name"),
         "wins": wins,
         "losses": losses,
@@ -157,9 +183,11 @@ def normalize_standing_basketball(sport: str, raw: dict) -> dict:
 
 
 def normalize_player(sport: str, raw: dict) -> dict:
-    player_id = raw.get("id")
+    player_id = _scoped_id(sport, raw.get("id"))
+    if player_id is None:
+        raise MissingUpstreamId(f"{sport} player has no id: {str(raw)[:120]}")
     return {
-        "id": f"{sport}_{player_id}",
+        "id": player_id,
         "sport": sport,
         "name": raw.get("name") or f"{raw.get('firstname', '')} {raw.get('lastname', '')}".strip(),
         "team_id": None,
@@ -168,31 +196,39 @@ def normalize_player(sport: str, raw: dict) -> dict:
     }
 
 
-def normalize_odds(sport: str, game_id: str, raw_bookmaker: dict) -> dict:
-    bets = {b.get("name"): b.get("values") for b in raw_bookmaker.get("bets", [])}
+def normalize_odds(sport: str, game_id, raw_bookmaker: dict) -> dict:
+    scoped = _scoped_id(sport, game_id)
+    if scoped is None:
+        # Odds with no game to hang them off are unusable, and Odds.game_id is
+        # NOT NULL -- persisting one raises IntegrityError from inside the
+        # request handler instead of here where the cause is visible.
+        raise MissingUpstreamId(f"{sport} odds entry has no game id")
+
+    bets = {b.get("name"): b.get("values") for b in raw_bookmaker.get("bets", []) if isinstance(b, dict)}
 
     def _values(bet_name: str) -> list[dict]:
-        return bets.get(bet_name, []) or []
+        values = bets.get(bet_name) or []
+        return [v for v in values if isinstance(v, dict) and v.get("value") is not None]
 
     moneyline_values = _values("Moneyline") or _values("Match Winner")
     spread_values = _values("Point Spread") or _values("Handicap")
     total_values = _values("Total Points") or _values("Over/Under")
 
     return {
-        "game_id": f"{sport}_{game_id}",
+        "game_id": scoped,
         "bookmaker": raw_bookmaker.get("name"),
-        "moneyline": {v.get("value"): v.get("odd") for v in moneyline_values} or None,
-        "spread": {v.get("value"): v.get("odd") for v in spread_values} or None,
-        "total": {v.get("value"): v.get("odd") for v in total_values} or None,
+        "moneyline": {v["value"]: v.get("odd") for v in moneyline_values} or None,
+        "spread": {v["value"]: v.get("odd") for v in spread_values} or None,
+        "total": {v["value"]: v.get("odd") for v in total_values} or None,
     }
 
 
 def normalize_injury(sport: str, raw: dict) -> dict:
     return {
         "sport": sport,
-        "player_id": f"{sport}_{_dig(raw, 'player', 'id')}" if _dig(raw, "player", "id") else None,
+        "player_id": _scoped_id(sport, _dig(raw, "player", "id")),
         "player_name": _dig(raw, "player", "name", default="Unknown"),
-        "team_id": f"{sport}_{_dig(raw, 'team', 'id')}" if _dig(raw, "team", "id") else None,
+        "team_id": _scoped_id(sport, _dig(raw, "team", "id")),
         "team_name": _dig(raw, "team", "name"),
         "status": _dig(raw, "player", "status") or raw.get("status"),
         "description": _dig(raw, "player", "description") or raw.get("description"),

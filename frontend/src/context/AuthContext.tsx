@@ -18,16 +18,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+    // onAuthStateChange can fire before the getSession promise resolves. When
+    // it does, getSession's older answer must not overwrite it -- signing in
+    // and immediately getting bounced back to /login is what that looks like.
+    let sawAuthEvent = false;
+
     supabase.auth.getSession().then(({ data }) => {
+      if (!active || sawAuthEvent) {
+        if (active) setLoading(false);
+        return;
+      }
       setSession(data.session);
       setLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!active) return;
+      sawAuthEvent = true;
       setSession(newSession);
+      // Also resolves the initial load: if the event beat getSession, waiting
+      // on getSession would leave the app spinning behind ProtectedRoute.
+      setLoading(false);
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   async function signUp(email: string, password: string) {

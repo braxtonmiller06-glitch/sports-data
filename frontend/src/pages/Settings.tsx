@@ -25,6 +25,16 @@ const PANES: { id: Pane; label: string; icon: string }[] = [
   { id: "defaults", label: "Defaults", icon: "M4 6h16M4 12h16M4 18h10" },
 ];
 
+/** Which pane each validated field lives on. The save button is visible from
+ *  every pane, so an error on a control the user isn't looking at would
+ *  otherwise read as "some values are out of range" with nothing highlighted. */
+const FIELD_PANE: Record<string, Pane> = {
+  bankroll: "bankroll",
+  unit_value: "bankroll",
+  max_bet_units: "bankroll",
+  weekly_loss_limit_units: "bankroll",
+};
+
 const SUN =
   "M12 8a4 4 0 100 8 4 4 0 000-8M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8";
 const MOON = "M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z";
@@ -48,7 +58,8 @@ function Icon({ d, className = "h-4 w-4" }: { d: string; className?: string }) {
 export default function Settings() {
   const [pane, setPane] = useState<Pane>("appearance");
   const { theme, setTheme } = useTheme();
-  const { settings, update, save, loading, loaded, saving, error, savedAt } = useSettings();
+  const { settings, update, save, loading, loaded, saving, error, fieldErrors, savedAt } =
+    useSettings();
   const { profile } = useProfile();
 
   // The theme applies the moment it's clicked (via ThemeContext + localStorage);
@@ -66,6 +77,15 @@ export default function Settings() {
   function onThemeChange(next: Theme) {
     setTheme(next);
     update("theme", next);
+  }
+
+  async function onSave() {
+    const ok = await save();
+    if (ok) return;
+    // Jump to whichever pane holds the first offending field so the message
+    // above points at something the user can actually see.
+    const offending = Object.keys(fieldErrors).find((key) => key in FIELD_PANE);
+    if (offending) setPane(FIELD_PANE[offending]);
   }
 
   const math = bankrollMath(settings);
@@ -184,6 +204,7 @@ export default function Settings() {
                     title="Starting bankroll"
                     description="Saved to your account, so the unit calculator stops asking every session."
                     htmlFor="bankroll"
+                    error={fieldErrors.bankroll}
                   >
                     <NumberInput
                       id="bankroll"
@@ -191,6 +212,7 @@ export default function Settings() {
                       onChange={(v) => update("bankroll", v === "" ? 0 : v)}
                       min={0}
                       step={10}
+                      invalid={Boolean(fieldErrors.bankroll)}
                     />
                   </SettingRow>
 
@@ -198,6 +220,7 @@ export default function Settings() {
                     title="Unit size"
                     description="A unit is one standard bet. One percent is the common conservative setting."
                     htmlFor="unit"
+                    error={fieldErrors.unit_value}
                   >
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <NumberInput
@@ -208,6 +231,7 @@ export default function Settings() {
                         max={settings.unit_mode === "percent" ? 25 : undefined}
                         step={settings.unit_mode === "percent" ? 0.25 : 5}
                         width="w-20"
+                        invalid={Boolean(fieldErrors.unit_value)}
                       />
                       <Segmented<UnitMode>
                         label="Unit mode"
@@ -230,6 +254,7 @@ export default function Settings() {
                     title="Max bet cap"
                     description="Hard ceiling on any single wager, in units. Nothing will be suggested above it."
                     htmlFor="cap"
+                    error={fieldErrors.max_bet_units}
                   >
                     <NumberInput
                       id="cap"
@@ -240,6 +265,7 @@ export default function Settings() {
                       step={0.5}
                       suffix="units"
                       width="w-20"
+                      invalid={Boolean(fieldErrors.max_bet_units)}
                     />
                   </SettingRow>
 
@@ -314,6 +340,7 @@ export default function Settings() {
                     title="Weekly loss limit"
                     description="Stake suggestions stop for the week once you hit it. You can still browse everything."
                     htmlFor="limit"
+                    error={fieldErrors.weekly_loss_limit_units}
                   >
                     <NumberInput
                       id="limit"
@@ -323,6 +350,7 @@ export default function Settings() {
                       step={1}
                       suffix="units"
                       width="w-20"
+                      invalid={Boolean(fieldErrors.weekly_loss_limit_units)}
                     />
                   </SettingRow>
                 </SettingGroup>
@@ -386,7 +414,7 @@ export default function Settings() {
             ) : null}
 
             <div className="flex flex-wrap items-center gap-4 pt-1">
-              <Button onClick={() => void save()} disabled={saving || loading}>
+              <Button onClick={() => void onSave()} disabled={saving || loading}>
                 {saving ? "Saving…" : "Save changes"}
               </Button>
               {savedAt ? (
