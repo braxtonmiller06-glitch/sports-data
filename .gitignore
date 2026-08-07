@@ -1,0 +1,16 @@
+# Every env file except the committed template. A bare ".env" line matches
+# only that exact name, so .env.local / .env.production -- which hold the
+# same secrets and are what dotenv and Vite actually load -- were not
+# covered. SUPABASE_SERVICE_KEY bypasses row-level security; it must never
+# reach a commit.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.db
+node_modules/
+.DS_Store
