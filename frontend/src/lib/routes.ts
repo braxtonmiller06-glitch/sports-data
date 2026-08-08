@@ -22,7 +22,7 @@ export const ROUTES = {
 
   // --- Research -------------------------------------------------------------
   research: "/research",
-  playerLookup: "/research/props",
+  playerLookup: "/research/player-lookup",
   moneylines: "/research/moneylines",
   totals: "/research/totals",
 
@@ -50,4 +50,5 @@ export const ROUTE_REDIRECTS: Record<string, RoutePath> = {
   "/briefing": ROUTES.morningBriefing,
   "/ask": ROUTES.askAtlas,
   "/market": ROUTES.games,
+  "/research/props": ROUTES.playerLookup,
 };

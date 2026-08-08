@@ -62,7 +62,7 @@ export const NAV_SECTIONS: NavSectionDef[] = [
     label: "Research",
     items: [
       { label: "Research Reports", to: ROUTES.research, icon: FlaskConical, soon: true },
-      { label: "Player Lookup", to: ROUTES.playerLookup, icon: UserRound, soon: true },
+      { label: "Player Lookup", to: ROUTES.playerLookup, icon: UserRound },
       { label: "Moneylines", to: ROUTES.moneylines, icon: Scale, soon: true },
       { label: "Totals", to: ROUTES.totals, icon: Sigma, soon: true },
     ],

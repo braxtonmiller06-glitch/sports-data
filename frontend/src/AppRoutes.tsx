@@ -21,6 +21,7 @@ import MorningBriefingPage from "./pages/tools/MorningBriefingTool";
 import PlayerBoardPage from "./pages/tools/PlayerBoard";
 import HeadToHeadPage from "./pages/tools/HeadToHead";
 import AskAtlasPage from "./pages/tools/AskAtlasTool";
+import PlayerLookupPage from "./pages/research/PlayerLookup";
 
 const TOOL_ROUTES: { path: string; element: ReactNode }[] = [
   { path: ROUTES.filterPlays, element: <FilterPlaysPage /> },
@@ -40,8 +41,10 @@ const TOOL_PATHS = new Set<string>(TOOL_ROUTES.map((route) => route.path));
  * they all have real workspaces — so this only covers the sections still to be
  * built.
  */
+const REAL_PAGES = new Set<string>([...TOOL_PATHS, ROUTES.dashboard, ROUTES.playerLookup]);
+
 const PLACEHOLDER_ROUTES = ALL_NAV_ITEMS.filter(
-  (item) => item.soon && !TOOL_PATHS.has(item.to),
+  (item) => item.soon && !REAL_PAGES.has(item.to),
 ).map((item) => item.to);
 
 /**
@@ -67,6 +70,7 @@ export function AppRoutes({ guarded = true }: { guarded?: boolean }) {
       <Route path={ROUTES.signup} element={<Signup />} />
 
       <Route path={ROUTES.dashboard} element={guard(<DashboardPage />)} />
+      <Route path={ROUTES.playerLookup} element={guard(<PlayerLookupPage />)} />
 
       {TOOL_ROUTES.map((route) => (
         <Route key={route.path} path={route.path} element={guard(route.element)} />
