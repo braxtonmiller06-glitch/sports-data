@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  ADVANCED_FILTER_IDS,
   LOOKUP_FILTERS,
-  PLAYERS,
   playerById,
+  playersForSport,
   type GameLogEntry,
   type StatKey,
 } from "@/data/playerLookupFixtures";
+import { useSport } from "@/lib/sport-context";
 
 export type FilterState = Record<string, string>;
 
@@ -55,13 +57,24 @@ function matches(game: GameLogEntry, id: string, value: string, stat: StatKey, p
  * fixture import with a fetch is the only change this needs to go live.
  */
 export function usePlayerLookup() {
-  const [playerId, setPlayerId] = useState(PLAYERS[0].id);
+  const { sport, config: sportConfig } = useSport();
+
+  const roster = useMemo(() => playersForSport(sport), [sport]);
+
+  const [playerId, setPlayerId] = useState(() => playersForSport(sport)[0]?.id ?? "");
   const [stat, setStat] = useState<StatKey>("points");
   const [side, setSide] = useState<"over" | "under">("over");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [lineOverride, setLineOverride] = useState<number | null>(null);
 
-  const player = useMemo(() => playerById(playerId), [playerId]);
+  // Switching sport swaps the roster underneath; fall back to its first player
+  // rather than holding a selection that no longer belongs to this sport.
+  const resolvedId = useMemo(
+    () => (roster.some((p) => p.id === playerId) ? playerId : (roster[0]?.id ?? "")),
+    [roster, playerId],
+  );
+
+  const player = useMemo(() => playerById(resolvedId), [resolvedId]);
 
   const market = useMemo(
     () => player.markets.find((m) => m.stat === stat) ?? player.markets[0],
@@ -162,10 +175,21 @@ export function usePlayerLookup() {
     [market.line],
   );
 
+  const advancedActiveCount = useMemo(
+    () => activeFilters.filter((f) => (ADVANCED_FILTER_IDS as readonly string[]).includes(f.id)).length,
+    [activeFilters],
+  );
+
   return {
+    // sport scope
+    sport,
+    sportConfig,
+    roster,
+    sportSupported: sportConfig.implemented && roster.length > 0,
+    advancedActiveCount,
     // selection
     player,
-    playerId,
+    playerId: resolvedId,
     selectPlayer,
     stat,
     selectStat,

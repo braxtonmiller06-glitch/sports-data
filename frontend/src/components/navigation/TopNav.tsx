@@ -7,6 +7,7 @@ import { ProfileMenu } from "./ProfileMenu";
 import { MembershipBadge } from "./MembershipBadge";
 import { TierSwitcher } from "@/components/subscription/TierSwitcher";
 import { ToolsMenu } from "./ToolsMenu";
+import { SportSelector } from "./SportSelector";
 import { titleForPath } from "./nav-config";
 import { Separator } from "@/components/ui/separator";
 import { useShell } from "@/components/layout/shell-context";
@@ -57,6 +58,9 @@ export function TopNav() {
       <h1 className="shrink-0 truncate text-sm font-medium tracking-tight text-fg">
         {titleForPath(pathname)}
       </h1>
+
+      {/* Global sport scope, read by every page. */}
+      <SportSelector className="shrink-0" />
 
       {/* The eight tools, reachable from every page. */}
       <ToolsMenu className="hidden shrink-0 md:flex" />

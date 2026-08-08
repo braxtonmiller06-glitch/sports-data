@@ -1,4 +1,5 @@
 import type { FilterStatus } from "./dashboardFixtures";
+import { sportIdFromLeague, type SportId } from "@/lib/sports";
 
 /**
  * ---------------------------------------------------------------------------
@@ -421,6 +422,27 @@ export const PLAYERS: PlayerFixture[] = [
   },
 ];
 
+/** The four primary filters stay on screen; the rest live behind Advanced. */
+export const PRIMARY_FILTER_IDS = ["timeframe", "venue", "opponent"] as const;
+export const ADVANCED_FILTER_IDS = [
+  "rest",
+  "teammate",
+  "minutes",
+  "usage",
+  "script",
+  "oppdef",
+  "pace",
+  "prev",
+] as const;
+
+export function sportOf(player: PlayerFixture): SportId {
+  return sportIdFromLeague(player.league);
+}
+
+export function playersForSport(sport: SportId): PlayerFixture[] {
+  return PLAYERS.filter((p) => sportOf(p) === sport);
+}
+
 export function playerById(id: string): PlayerFixture {
   return PLAYERS.find((p) => p.id === id) ?? PLAYERS[0];
 }
@@ -567,3 +589,56 @@ export const SITUATIONAL_SPLITS = [
   { label: "vs bottom-10 defences", value: "31.2", sample: "11 games", delta: "+4.4" },
   { label: "With a starter out", value: "32.1", sample: "6 games", delta: "+5.3" },
 ];
+
+/* --------------------------------------------------- line movement & H2H -- */
+
+export interface LineMovementPoint {
+  time: string;
+  line: number;
+  price: string;
+}
+
+/** Open → now for the featured market. Replaced by the odds feed later. */
+export const LINE_MOVEMENT: LineMovementPoint[] = [
+  { time: "Open · 06:00", line: 27.5, price: "-104" },
+  { time: "08:20", line: 27.5, price: "-106" },
+  { time: "10:05", line: 28.0, price: "-108" },
+  { time: "11:18", line: 28.0, price: "-110" },
+  { time: "11:42", line: 28.5, price: "-108" },
+  { time: "Now · 12:04", line: 28.5, price: "-112" },
+];
+
+export interface PlayerH2HRow {
+  date: string;
+  opponent: string;
+  value: number;
+  line: number;
+  minutes: number;
+}
+
+/** This player against the upcoming opponent specifically. */
+export const PLAYER_H2H: PlayerH2HRow[] = [
+  { date: "Apr 22, 2026", opponent: "DEN", value: 31, line: 27.5, minutes: 38.2 },
+  { date: "Mar 08, 2026", opponent: "DEN", value: 24, line: 26.5, minutes: 35.1 },
+  { date: "Jan 31, 2026", opponent: "DEN", value: 29, line: 27.5, minutes: 37.6 },
+  { date: "Dec 14, 2025", opponent: "DEN", value: 19, line: 26.5, minutes: 31.4 },
+  { date: "Nov 02, 2025", opponent: "DEN", value: 33, line: 25.5, minutes: 39.0 },
+];
+
+export const HISTORICAL_WINDOWS = [
+  { label: "Last 5", average: 30.2, overRate: 80, sample: 5 },
+  { label: "Last 10", average: 29.1, overRate: 60, sample: 10 },
+  { label: "Last 20", average: 27.6, overRate: 55, sample: 20 },
+  { label: "Season", average: 26.8, overRate: 52, sample: 62 },
+];
+
+export const AI_ANALYSIS = {
+  summary:
+    "The projection rests on three things holding: Denver's pace, the usage bump from their starting guard being out, and Edwards clearing 35 minutes. Two of the three are well-sampled. The third is where the risk sits — a 9.5 spread is the one scenario that takes fourth-quarter minutes away, and it is also the scenario the market is pricing toward.",
+  points: [
+    "Six of eight signals pass. The two that do not are both about the same risk, not two independent risks.",
+    "The 14% edge assumes 37.2 minutes. At 33 minutes the edge is roughly 4%, which is inside the noise.",
+    "The number has moved a full point against this side since open, which historically precedes the rest of the market following.",
+  ],
+  citations: ["Pace filter", "Usage filter", "Injuries filter", "Market snapshot 11:42"],
+};

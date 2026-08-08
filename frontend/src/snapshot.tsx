@@ -6,6 +6,7 @@ import { ThemeProvider, THEME_STORAGE_KEY } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import { AccessProvider } from "./lib/access";
 import { TrackedPropsProvider } from "./lib/tracked-props";
+import { SportProvider } from "./lib/sport-context";
 import { AppRoutes } from "./AppRoutes";
 
 /**
@@ -43,9 +44,11 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <AccessProvider>
           <TrackedPropsProvider>
+            <SportProvider>
             <MemoryRouter initialEntries={["/dashboard"]}>
               <AppRoutes guarded={false} />
             </MemoryRouter>
+            </SportProvider>
           </TrackedPropsProvider>
         </AccessProvider>
       </AuthProvider>
