@@ -107,17 +107,33 @@ create or replace trigger on_auth_user_created_settings
 -- Row Level Security: a user can only ever see or change their own row.
 -- Note there is deliberately no delete policy -- settings die with the user via
 -- the on delete cascade, and there is no product reason to delete them alone.
+--
+-- Policies are dropped first so this file can be re-applied to a live database
+-- (Postgres has no CREATE POLICY IF NOT EXISTS). auth.uid() is wrapped in a
+-- scalar subquery so it is evaluated once per statement rather than once per
+-- row -- Supabase's auth_rls_initplan lint.
 alter table user_settings enable row level security;
 
+drop policy if exists "settings are self-readable" on user_settings;
 create policy "settings are self-readable"
     on user_settings for select
-    using (auth.uid() = user_id);
+    to authenticated
+    using ((select auth.uid()) = user_id);
 
+drop policy if exists "settings are self-insertable" on user_settings;
 create policy "settings are self-insertable"
     on user_settings for insert
-    with check (auth.uid() = user_id);
+    to authenticated
+    with check ((select auth.uid()) = user_id);
 
+drop policy if exists "settings are self-updatable" on user_settings;
 create policy "settings are self-updatable"
     on user_settings for update
-    using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    to authenticated
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
+
+-- Anon has no business here at all, and no delete grant backs up the missing
+-- delete policy.
+revoke all on public.user_settings from anon, authenticated;
+grant select, insert, update on public.user_settings to authenticated;

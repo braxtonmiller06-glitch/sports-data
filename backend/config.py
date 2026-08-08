@@ -52,6 +52,34 @@ CACHE_TTL_SECONDS = {
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./sports_data.db")
 
+# --- Authentication ---------------------------------------------------------
+# Supabase signs user JWTs with the project's JWT secret (Settings -> API ->
+# JWT Secret). Verifying locally keeps auth to a signature check rather than a
+# round trip per request. This is a SECRET: server-side only, never VITE_*.
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+
+# Supabase issues user tokens with aud="authenticated".
+SUPABASE_JWT_AUDIENCE = os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated")
+
+# Defaults to on. Every data route reaches a metered upstream, so an
+# unauthenticated API is an open proxy against someone else's quota. Turning
+# this off is a local-development convenience and validate_runtime_config()
+# refuses to boot a deployment with it off.
+AUTH_REQUIRED = os.getenv("AUTH_REQUIRED", "true").lower() not in ("0", "false", "no")
+
+# --- Per-caller rate limiting -----------------------------------------------
+# Separate from the API-Sports daily quota above: that one is shared by every
+# caller, so on its own it is what an abuser exhausts rather than what stops
+# them. 0 disables per-caller limiting.
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+
+# Set by the platform (Railway sets RAILWAY_ENVIRONMENT). Used only to decide
+# whether unsafe-but-convenient local defaults are tolerable.
+IS_DEPLOYED = bool(
+    os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT", "").lower() in ("production", "staging")
+)
+
 # Browser origins allowed to call this API, comma-separated. The default is
 # local dev only: a wildcard here would let any site on the internet read the
 # API through a visitor's browser, and "tighten it later" never happens.

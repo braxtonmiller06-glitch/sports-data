@@ -137,20 +137,163 @@ create or replace trigger on_auth_user_created
     after insert on auth.users
     for each row execute procedure public.handle_new_user();
 
--- Row Level Security: users can only ever read their own profile.
+/* ------------------------------------------------------------ entitlement -- */
+
+-- Subscription state for the calling user, or 'free' when no row exists.
+--
+-- SECURITY DEFINER so the lookup does not itself depend on the profiles
+-- SELECT policy: an entitlement check that can be starved of rows by the
+-- caller's own RLS is not an entitlement check.
+create or replace function public.current_subscription_status()
+returns text
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select coalesce(
+        (select p.subscription_status
+           from public.profiles p
+          where p.id = (select auth.uid())),
+        'free'
+    );
+$$;
+
+-- The single definition of "has paid access". Every entitlement decision in
+-- the database goes through this, so repricing a tier is a change here rather
+-- than a search across policies.
+create or replace function public.has_paid_access()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select public.current_subscription_status() = 'active';
+$$;
+
+revoke all on function public.current_subscription_status() from public, anon;
+revoke all on function public.has_paid_access() from public, anon;
+grant execute on function public.has_paid_access() to authenticated;
+
+/* ------------------------------------------------------------------- RLS -- */
+
+-- Policies are dropped first so this file is re-runnable against a live
+-- database. Postgres has no CREATE POLICY IF NOT EXISTS, and a schema file
+-- that errors on second run is a schema file nobody applies.
+--
+-- auth.uid() is wrapped in a scalar subquery throughout: called bare it is
+-- re-evaluated once per row, which is what Supabase's auth_rls_initplan lint
+-- flags. `to authenticated` replaces the older `auth.role() = 'authenticated'`
+-- test -- the role is matched by the policy's target rather than by a
+-- per-row expression.
+
 alter table profiles enable row level security;
 
+drop policy if exists "profiles are self-readable" on profiles;
 create policy "profiles are self-readable"
     on profiles for select
-    using (auth.uid() = id);
+    to authenticated
+    using ((select auth.uid()) = id);
 
--- Picks: readable by anyone signed in. The frontend itself decides how much
--- of a pick to *show* based on profiles.subscription_status (free vs paid
--- tiers) -- this policy only gates "signed in at all" at the database level.
--- Tighten this (e.g. hide `filters` for free users at the RLS level too)
--- once billing is live and that tradeoff matters for real.
+-- A user may correct their own email and nothing else.
+--
+-- The subscription columns are withheld by the column grant below, not by
+-- this policy. RLS gates rows, never columns: without the grant, "update your
+-- own row" would include "set your own subscription_status to active", which
+-- is the whole paywall.
+drop policy if exists "profiles are self-updatable" on profiles;
+create policy "profiles are self-updatable"
+    on profiles for update
+    to authenticated
+    using ((select auth.uid()) = id)
+    with check ((select auth.uid()) = id);
+
+revoke all on public.profiles from anon, authenticated;
+-- Stripe identifiers are deliberately absent: the browser never needs them,
+-- and they are useful to an attacker enumerating a billing account.
+grant select (id, email, subscription_status, created_at, updated_at)
+    on public.profiles to authenticated;
+grant update (email) on public.profiles to authenticated;
+
+-- Picks: every row is readable by any signed-in user, except the premium
+-- research breakdown.
 alter table picks enable row level security;
 
+drop policy if exists "picks are readable by authenticated users" on picks;
 create policy "picks are readable by authenticated users"
     on picks for select
-    using (auth.role() = 'authenticated');
+    to authenticated
+    using (true);
+
+-- Writes are service-role only. The service role bypasses RLS, so the absence
+-- of a write policy already blocks users; these revokes state it at the
+-- privilege level too, so a future permissive policy cannot silently widen
+-- what a user may write.
+revoke all on public.picks from anon, authenticated;
+grant select (
+    id, sport, market_type, subject, home_team, away_team, external_event_id,
+    line, selection_side, three_way, decimal_odds, model_probability,
+    market_probability, edge, confidence, verdict, stake, settles_at,
+    created_at, closing_decimal_odds, clv_pct, graded, result, graded_at
+) on public.picks to authenticated;
+
+-- `filters` is deliberately excluded from that grant. It is the per-filter
+-- research breakdown -- the thing a subscription actually buys. Column-level
+-- privileges are the only enforcement that survives the client: a free user
+-- asking PostgREST for select=filters gets a permission error, not a row.
+-- The paid path is the function below.
+create or replace function public.pick_filters(p_pick_id bigint)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_filters jsonb;
+begin
+    -- 42501 = insufficient_privilege. PostgREST maps it to 403, which is what
+    -- the caller should see: the row exists, the entitlement does not.
+    if (select auth.uid()) is null then
+        raise exception 'authentication required'
+            using errcode = '42501';
+    end if;
+
+    if not public.has_paid_access() then
+        raise exception 'subscription required'
+            using errcode = '42501';
+    end if;
+
+    select p.filters into v_filters
+      from public.picks p
+     where p.id = p_pick_id;
+
+    return v_filters;
+end;
+$$;
+
+revoke all on function public.pick_filters(bigint) from public, anon;
+grant execute on function public.pick_filters(bigint) to authenticated;
+
+/* ----------------------------------------------------------------- views -- */
+
+-- A view executes with its owner's privileges unless created with
+-- security_invoker, which means a view over an RLS-protected table hands out
+-- exactly what the policy underneath was written to withhold. Supabase's
+-- database linter reports this as `security_definer_view`.
+--
+-- This runs over every view in `public` rather than a named list on purpose:
+-- the live database contains at least one view that is not defined in this
+-- repository (public.graded_picks), and an object nobody can see in review is
+-- precisely the one that needs the guarantee.
+do $$
+declare
+    v record;
+begin
+    for v in select viewname from pg_views where schemaname = 'public'
+    loop
+        execute format('alter view public.%I set (security_invoker = on)', v.viewname);
+    end loop;
+end
+$$;
