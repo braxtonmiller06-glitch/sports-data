@@ -3,10 +3,16 @@ import { Check, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LivePulse } from "@/components/ui/live-pulse";
 import { cn } from "@/lib/utils";
-import { PLAYERS, type PlayerFixture } from "@/data/playerLookupFixtures";
+import { type PlayerFixture } from "@/data/playerLookupFixtures";
 
 interface Props {
   player: PlayerFixture;
+  /**
+   * The players in scope — the current sport's roster, not every fixture.
+   * Searching across all leagues offered results the page would then reject,
+   * because selecting one outside the active sport falls back immediately.
+   */
+  roster: PlayerFixture[];
   onSelect: (id: string) => void;
 }
 
@@ -17,21 +23,21 @@ interface Props {
  * player stays visible the whole time so switching never leaves the header
  * empty.
  */
-export function PlayerSearchHeader({ player, onSelect }: Props) {
+export function PlayerSearchHeader({ player, roster, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return PLAYERS;
-    return PLAYERS.filter(
+    if (!q) return roster;
+    return roster.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.team.toLowerCase().includes(q) ||
         p.teamName.toLowerCase().includes(q) ||
         p.position.toLowerCase().includes(q),
     );
-  }, [query]);
+  }, [query, roster]);
 
   function choose(id: string) {
     onSelect(id);

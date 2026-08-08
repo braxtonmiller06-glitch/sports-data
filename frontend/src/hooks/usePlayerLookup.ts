@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   ADVANCED_FILTER_IDS,
   LOOKUP_FILTERS,
@@ -7,6 +8,8 @@ import {
   type GameLogEntry,
   type StatKey,
 } from "@/data/playerLookupFixtures";
+import { parseResearchLink } from "@/lib/research-link";
+import { sportById } from "@/lib/sports";
 import { useSport } from "@/lib/sport-context";
 
 export type FilterState = Record<string, string>;
@@ -57,15 +60,46 @@ function matches(game: GameLogEntry, id: string, value: string, stat: StatKey, p
  * fixture import with a fetch is the only change this needs to go live.
  */
 export function usePlayerLookup() {
-  const { sport, config: sportConfig } = useSport();
+  const { sport, setSport, config: globalSportConfig } = useSport();
+  const { search } = useLocation();
 
-  const roster = useMemo(() => playersForSport(sport), [sport]);
+  /**
+   * A deep link from Filter Plays, read once at mount.
+   *
+   * Parsed in a state initialiser rather than an effect so the first paint is
+   * already the requested player — arriving from a result and seeing the
+   * default player flash first would undercut the whole flow. The search string
+   * comes from the router rather than `window.location` so it also resolves
+   * under the MemoryRouter the review snapshot uses.
+   */
+  const [link] = useState(() => parseResearchLink(search));
+  const [sportSynced, setSportSynced] = useState(() => !link || link.sport === sport);
 
-  const [playerId, setPlayerId] = useState(() => playersForSport(sport)[0]?.id ?? "");
-  const [stat, setStat] = useState<StatKey>("points");
-  const [side, setSide] = useState<"over" | "under">("over");
+  const [playerId, setPlayerId] = useState(
+    () => link?.player.id ?? playersForSport(sport)[0]?.id ?? "",
+  );
+  const [stat, setStat] = useState<StatKey>(() => link?.stat ?? "points");
+  const [side, setSide] = useState<"over" | "under">(() => link?.side ?? "over");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [lineOverride, setLineOverride] = useState<number | null>(null);
+  const [lineOverride, setLineOverride] = useState<number | null>(() => link?.line ?? null);
+
+  /**
+   * A link can name a player from another sport. The global selector stays the
+   * single source of truth, so the link pushes the scope into it rather than
+   * holding a second one — and until that lands, this hook reads the link's
+   * sport so the roster below never falls back to the wrong league.
+   */
+  const scopeSport = sportSynced ? sport : (link?.sport ?? sport);
+
+  useEffect(() => {
+    if (sportSynced || !link) return;
+    setSport(link.sport);
+    setSportSynced(true);
+  }, [link, sportSynced, setSport]);
+
+  const sportConfig = sportSynced ? globalSportConfig : sportById(scopeSport);
+
+  const roster = useMemo(() => playersForSport(scopeSport), [scopeSport]);
 
   // Switching sport swaps the roster underneath; fall back to its first player
   // rather than holding a selection that no longer belongs to this sport.
@@ -182,10 +216,16 @@ export function usePlayerLookup() {
 
   return {
     // sport scope
-    sport,
+    sport: scopeSport,
     sportConfig,
     roster,
     sportSupported: sportConfig.implemented && roster.length > 0,
+    /**
+     * Set when a deep link asked for a market Player Lookup cannot chart yet
+     * (PRA, PR, PA, 3PT). The page says so rather than silently showing a
+     * different market than the one that was clicked.
+     */
+    unavailableMarket: link?.unavailableMarket ?? null,
     advancedActiveCount,
     // selection
     player,

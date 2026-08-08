@@ -2,10 +2,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
 import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { ResearchFilters } from "@/components/dashboard/ResearchFilters";
-import { SportSelector } from "@/components/navigation/SportSelector";
 import { PlayerSearchHeader } from "@/components/player-lookup/PlayerSearchHeader";
 import { PlayerContextStrip } from "@/components/player-lookup/PlayerContextStrip";
 import { PropSummary } from "@/components/player-lookup/PropSummary";
@@ -34,7 +32,7 @@ import {
   PlayerHeadToHeadPanel,
 } from "@/components/player-lookup/TabPanels";
 import { usePlayerLookup } from "@/hooks/usePlayerLookup";
-import { DATE_OPTIONS } from "@/data/toolsFixtures";
+import { STAT_LABEL } from "@/data/playerLookupFixtures";
 import { cardVariants, staggerContainer } from "@/lib/motion";
 
 const TABS = [
@@ -57,35 +55,35 @@ export default function PlayerLookupPage() {
   const lookup = usePlayerLookup();
   const { player, stat, side, line, stats, sportConfig, sportSupported } = lookup;
   const [tab, setTab] = useState("overview");
-  const [date, setDate] = useState("today");
 
   return (
     <AppShell>
       <motion.div variants={staggerContainer} className="flex flex-col gap-5">
-        {/* Header: title + scope controls */}
+        {/* Header: title, search, identity. The sport scope lives in the top
+            navigation — one global selector, not a second copy per page. */}
         <motion.section variants={cardVariants} className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-[11px] font-medium tracking-[0.18em] text-fg-faint">
-              PLAYER LOOKUP
-            </h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <SportSelector />
-              <label className="sr-only" htmlFor="lookup-date">
-                Date
-              </label>
-              <Select
-                id="lookup-date"
-                options={DATE_OPTIONS}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-[168px]"
-              />
-            </div>
-          </div>
+          <h1 className="text-[11px] font-medium tracking-[0.18em] text-fg-faint">
+            PLAYER LOOKUP
+          </h1>
 
           {sportSupported ? (
-            <PlayerSearchHeader player={player} onSelect={lookup.selectPlayer} />
+            <PlayerSearchHeader
+              player={player}
+              roster={lookup.roster}
+              onSelect={lookup.selectPlayer}
+            />
           ) : null}
+
+          {lookup.unavailableMarket && (
+            <p
+              role="status"
+              className="rounded-lg border border-line bg-inset px-3.5 py-2.5 text-[12px] leading-relaxed text-fg-muted"
+            >
+              <span className="font-medium text-fg">{lookup.unavailableMarket}</span> is not
+              charted in Player Lookup yet — showing {STAT_LABEL[stat]} for {player.name}{" "}
+              instead.
+            </p>
+          )}
         </motion.section>
 
         {!sportSupported ? (
@@ -163,9 +161,11 @@ export default function PlayerLookupPage() {
                 <ResearchActions
                   playerId={player.id}
                   playerName={player.name}
+                  sport={lookup.sport}
                   stat={stat}
                   side={side}
                   line={line}
+                  odds={side === "over" ? lookup.market.overOdds : lookup.market.underOdds}
                 />
               </TabPanel>
 

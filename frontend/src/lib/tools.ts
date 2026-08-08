@@ -35,7 +35,7 @@ export const TOOLS: ToolDef[] = [
   {
     id: "filter-plays",
     name: "Filter Plays",
-    description: "Scan the slate through Atlas research filters.",
+    description: "Find research opportunities that match your criteria.",
     icon: SlidersHorizontal,
     to: ROUTES.filterPlays,
     premiumFeature: "expanded_filters",

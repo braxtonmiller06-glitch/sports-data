@@ -15,6 +15,16 @@ export interface TrackedProp {
   subject: string;
   market: string;
   addedAt: number;
+  /**
+   * Slate detail, carried when the caller has it. Optional so the fields could
+   * be added without invalidating entries already in localStorage, and so the
+   * dashboard's existing call sites stay unchanged.
+   */
+  sport?: string;
+  line?: number;
+  odds?: string;
+  /** ISO date of the game this prop belongs to. */
+  date?: string;
 }
 
 interface TrackedPropsValue {

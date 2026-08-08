@@ -12,6 +12,8 @@ interface ToolShellProps {
   tool: ToolDef;
   /** Sport / date / market selectors, rendered on the header's right. */
   controls?: ReactNode;
+  /** Overrides the control grid when a tool carries a different number of them. */
+  controlsClassName?: string;
   lastUpdated?: string;
   children: ReactNode;
 }
@@ -26,6 +28,7 @@ interface ToolShellProps {
 export function ToolShell({
   tool,
   controls,
+  controlsClassName,
   lastUpdated = "Updated 18 seconds ago",
   children,
 }: ToolShellProps) {
@@ -67,7 +70,12 @@ export function ToolShell({
           </div>
 
           {controls && (
-            <div className={cn("grid gap-3", "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5")}>
+            <div
+              className={cn(
+                "grid gap-3",
+                controlsClassName ?? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5",
+              )}
+            >
               {controls}
             </div>
           )}
