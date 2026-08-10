@@ -80,6 +80,60 @@ IS_DEPLOYED = bool(
     os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT", "").lower() in ("production", "staging")
 )
 
+
+class UnsafeConfiguration(RuntimeError):
+    """Raised at startup for a combination that must never reach the internet."""
+
+
+def validate_runtime_config() -> list[str]:
+    """Refuse to boot a deployment configured unsafely; warn locally.
+
+    Every default in this module is already the safe one. What this guards is
+    the deploy that overrode a default without meaning to -- the failure mode
+    where nothing looks wrong because the app came up fine. On a deployed
+    instance these raise; locally they are printed, so development stays
+    frictionless without the production path depending on anyone's discipline.
+
+    Returns the list of warnings raised in local mode, for tests.
+    """
+    problems: list[str] = []
+
+    if not AUTH_REQUIRED:
+        problems.append(
+            "AUTH_REQUIRED is off: every data route is an open proxy to a metered upstream."
+        )
+    elif not SUPABASE_JWT_SECRET:
+        problems.append(
+            "AUTH_REQUIRED is on but SUPABASE_JWT_SECRET is unset: every request will 503."
+        )
+
+    if DEBUG_ERRORS:
+        problems.append(
+            "DEBUG_ERRORS is on: upstream bodies and database DSNs (user:password@host) "
+            "would be returned to HTTP clients."
+        )
+
+    if "*" in CORS_ALLOWED_ORIGINS:
+        problems.append(
+            "CORS_ALLOWED_ORIGINS contains '*': any site could read this API through "
+            "a visitor's browser."
+        )
+
+    if RATE_LIMIT_PER_MINUTE <= 0:
+        problems.append(
+            "RATE_LIMIT_PER_MINUTE is 0: one caller can exhaust the shared daily quota."
+        )
+
+    if problems and IS_DEPLOYED:
+        raise UnsafeConfiguration(
+            "Refusing to start with this configuration:\n  - " + "\n  - ".join(problems)
+        )
+
+    for problem in problems:
+        print(f"[config] WARNING (local only, would refuse to start if deployed): {problem}")
+
+    return problems
+
 # Browser origins allowed to call this API, comma-separated. The default is
 # local dev only: a wildcard here would let any site on the internet read the
 # API through a visitor's browser, and "tighten it later" never happens.

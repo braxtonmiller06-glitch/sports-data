@@ -12,19 +12,26 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from backend.config import CORS_ALLOWED_ORIGINS, DEBUG_ERRORS
+from backend.auth import AuthenticatedUser
+from backend.client_rate_limit import enforce as enforce_client_rate_limit
+from backend.client_rate_limit import rate_limited
+from backend.config import CORS_ALLOWED_ORIGINS, DEBUG_ERRORS, validate_runtime_config
 from backend.database import get_db, init_db
 from backend.fetchers.api_sports import ApiSportsError
 from backend.fetchers.interface import SportNotImplemented, UnknownSport
 from backend.rate_limiter import RateLimitExceeded, usage_snapshot
 from backend.routes import games, injuries, odds, players, standings, teams
-from backend.schemas import HealthOut
+from backend.schemas import HealthOut, UsageOut
 
 log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Before anything can serve a request. On a deployed instance an unsafe
+    # combination raises here and the release fails, which is the point --
+    # a misconfigured deploy should never reach the "looks fine" state.
+    validate_runtime_config()
     init_db()
     yield
 
@@ -71,16 +78,30 @@ def handle_api_sports_error(request: Request, exc: ApiSportsError):
     return JSONResponse(status_code=502, content={"detail": detail})
 
 
-app.include_router(games.router)
-app.include_router(teams.router)
-app.include_router(odds.router)
-app.include_router(players.router)
-app.include_router(standings.router)
-app.include_router(injuries.router)
+# Authentication and per-caller limiting are applied here, once, rather than
+# repeated on each handler. A route added to any of these routers is protected
+# by construction -- the failure mode where a new endpoint quietly ships
+# without a dependency someone forgot to copy cannot happen.
+_protected = [Depends(rate_limited)]
+
+app.include_router(games.router, dependencies=_protected)
+app.include_router(teams.router, dependencies=_protected)
+app.include_router(odds.router, dependencies=_protected)
+app.include_router(players.router, dependencies=_protected)
+app.include_router(standings.router, dependencies=_protected)
+app.include_router(injuries.router, dependencies=_protected)
 
 
 @app.get("/api/health", response_model=HealthOut)
-def health(db: Session = Depends(get_db)):
+def health(request: Request, db: Session = Depends(get_db)):
+    """Liveness, for the platform health check. Public, but not free to spam.
+
+    Rate limited by IP even though it is unauthenticated: it touches the
+    database, so an unbounded public endpoint here is a cheap way to load the
+    connection pool.
+    """
+    enforce_client_rate_limit(request)
+
     try:
         db.execute(text("SELECT 1"))
         db_status = "ok"
@@ -90,8 +111,19 @@ def health(db: Session = Depends(get_db)):
         log.exception("health check database probe failed")
         db_status = f"error: {exc}" if DEBUG_ERRORS else "error"
 
-    return {
-        "status": "ok",
-        "database": db_status,
-        "usage": usage_snapshot(db),
-    }
+    return {"status": "ok", "database": db_status}
+
+
+@app.get("/api/usage", response_model=UsageOut)
+def usage(
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(rate_limited),
+):
+    """Today's upstream quota consumption.
+
+    Split off the health check and put behind auth: how much of the day's
+    budget is left is operational detail, and telling an anonymous caller how
+    close the shared quota is to exhaustion is telling them how little work
+    finishing it off would take.
+    """
+    return {"usage": usage_snapshot(db)}

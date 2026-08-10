@@ -84,6 +84,17 @@ class ProductUsageOut(BaseModel):
 
 
 class HealthOut(BaseModel):
+    """Public liveness response.
+
+    Deliberately free of quota figures: this endpoint has to stay reachable
+    for the platform's health check, and how much of today's upstream budget
+    is left is operational detail an anonymous caller has no use for. The
+    numbers live behind auth on /api/usage.
+    """
+
     status: str
     database: str
+
+
+class UsageOut(BaseModel):
     usage: list[ProductUsageOut]
