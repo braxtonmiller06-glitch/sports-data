@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FilterOutput, Pick } from "../types/pick";
+import { usePickFilters } from "../hooks/usePickFilters";
 import { VerdictBadge } from "./VerdictBadge";
 
 const SIGNAL_COLOR: Record<FilterOutput["signal"], string> = {
@@ -58,6 +59,16 @@ export function PickCard({ pick, locked = false }: { pick: Pick; locked?: boolea
   const [expanded, setExpanded] = useState(false);
   const edgePct = (pick.edge * 100).toFixed(1);
 
+  // A breakdown carried on the pick itself (the illustrative sample) renders
+  // without a round trip. Anything from the database has to come through the
+  // RPC, and only once the user actually opens the section -- fetching a
+  // breakdown per card on mount would be one request per row of the dashboard.
+  const inlineFilters = pick.filters;
+  const remote = usePickFilters(
+    expanded && !locked && inlineFilters === undefined ? pick.id : null,
+  );
+  const filters = inlineFilters ?? remote.filters;
+
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-900 shadow-xl shadow-black/20">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -102,7 +113,11 @@ export function PickCard({ pick, locked = false }: { pick: Pick; locked?: boolea
             className="flex w-full items-center justify-between border-t border-ink-800 px-5 py-3 text-sm font-medium text-ink-300 hover:text-ink-50"
           >
             <span>
-              {pick.filters.length} filters fired · {expanded ? "Hide" : "Show"} breakdown
+              {/* The count is unknown until the breakdown is fetched, so the
+                  closed state names the section rather than quoting a number
+                  the client has not been given. */}
+              {filters ? `${filters.length} filters fired` : "Filter breakdown"} ·{" "}
+              {expanded ? "Hide" : "Show"}
             </span>
             <svg
               viewBox="0 0 24 24"
@@ -117,10 +132,23 @@ export function PickCard({ pick, locked = false }: { pick: Pick; locked?: boolea
 
           {expanded && (
             <div className="px-5 pb-5">
-              {pick.filters.length === 0 ? (
+              {remote.loading ? (
+                <p className="py-3 text-sm text-ink-500">Loading breakdown…</p>
+              ) : remote.forbidden ? (
+                <p className="py-3 text-sm text-ink-500">
+                  The filter breakdown is part of a paid plan.{" "}
+                  <a href="/#pricing" className="font-semibold text-edge-400 hover:underline">
+                    See plans
+                  </a>
+                </p>
+              ) : remote.error ? (
+                <p className="py-3 text-sm text-danger-500">
+                  Couldn't load the breakdown: {remote.error}
+                </p>
+              ) : !filters || filters.length === 0 ? (
                 <p className="py-3 text-sm text-ink-500">Breakdown not available for this pick yet.</p>
               ) : (
-                pick.filters.map((f) => <FilterRow key={f.filter_id} filter={f} />)
+                filters.map((f) => <FilterRow key={f.filter_id} filter={f} />)
               )}
             </div>
           )}

@@ -15,7 +15,6 @@ interface PickRow {
   edge: number;
   confidence: number;
   verdict: string;
-  filters: Pick["filters"] | null;
 }
 
 function rowToPick(row: PickRow): Pick {
@@ -32,7 +31,6 @@ function rowToPick(row: PickRow): Pick {
     edge: row.edge,
     confidence: row.confidence,
     verdict: row.verdict as Pick["verdict"],
-    filters: row.filters ?? [],
   };
 }
 
@@ -46,8 +44,13 @@ export function usePicks() {
     setLoading(true);
     supabase
       .from("picks")
+      // `filters` is deliberately absent. The column is not granted to
+      // `authenticated`, so naming it here does not return a partial row -- it
+      // fails the whole request with a permission error, which took the
+      // dashboard down for paid and free users alike. The breakdown is fetched
+      // per pick through the pick_filters RPC instead.
       .select(
-        "id, sport, subject, market_type, line, selection_side, decimal_odds, model_probability, market_probability, edge, confidence, verdict, filters",
+        "id, sport, subject, market_type, line, selection_side, decimal_odds, model_probability, market_probability, edge, confidence, verdict",
       )
       .order("created_at", { ascending: false })
       .limit(50)

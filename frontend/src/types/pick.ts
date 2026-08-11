@@ -24,5 +24,14 @@ export interface Pick {
   edge: number;
   confidence: number;
   verdict: "BET" | "PLAYABLE" | "LEAN" | "PASS";
-  filters: FilterOutput[];
+  /**
+   * Absent on anything loaded from the `picks` table.
+   *
+   * The database withholds this column from `authenticated` -- it is what a
+   * subscription buys -- so it never arrives with the row. Entitled callers
+   * fetch it separately through the `pick_filters` RPC (see usePickFilters).
+   * It stays on the type for fixtures that carry a breakdown inline, which is
+   * why it is optional rather than removed.
+   */
+  filters?: FilterOutput[];
 }
