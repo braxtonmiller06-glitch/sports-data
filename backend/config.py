@@ -124,6 +124,22 @@ def validate_runtime_config() -> list[str]:
             "RATE_LIMIT_PER_MINUTE is 0: one caller can exhaust the shared daily quota."
         )
 
+    # Only a problem once deployed -- SQLite is the right local default, and
+    # warning about it on every dev run would train people to ignore this.
+    #
+    # On a container platform the filesystem is ephemeral: the .db file is
+    # destroyed by every deploy, restart and crash. Nothing errors, the app
+    # simply comes back with empty tables. That silently discards the engine
+    # learning history (engine_filter_firings, engine_filter_grade_events) and
+    # resets api_usage, which is what stops the daily provider quota being
+    # overrun.
+    if IS_DEPLOYED and DATABASE_URL.startswith("sqlite"):
+        problems.append(
+            "DATABASE_URL points at SQLite on a deployed instance. Container disks are "
+            "ephemeral, so the engine learning history and the quota counter would be "
+            "destroyed on every restart without an error. Point DATABASE_URL at Postgres."
+        )
+
     if problems and IS_DEPLOYED:
         raise UnsafeConfiguration(
             "Refusing to start with this configuration:\n  - " + "\n  - ".join(problems)
