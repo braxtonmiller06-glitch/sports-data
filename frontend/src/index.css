@@ -1,0 +1,271 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ===========================================================================
+   Atlas design system
+   ---------------------------------------------------------------------------
+   Two token layers live here, deliberately:
+
+   1. `@theme` — the Atlas palette. These generate Tailwind utilities directly
+      (bg-canvas, border-line, text-fg-muted, ...) and are what application
+      code should reach for.
+   2. `:root` shadcn variables + `@theme inline` — the contract `npx shadcn add`
+      expects. Keeping them means any future shadcn component drops in already
+      wearing Atlas colors, with no re-theming pass.
+
+   The legacy "ink" and "edge" ramps are preserved below because Landing,
+   Login, Settings and PickCard are all still built on them. Removing them
+   would be a rewrite of pages this task does not cover.
+   =========================================================================== */
+
+@theme {
+  --font-sans:
+    "Inter var", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* --- Atlas surfaces ---------------------------------------------------- */
+  --color-canvas: #0f0f10;
+  --color-surface: #17181c;
+  --color-surface-hi: #1c1e23;
+  --color-surface-hover: #202329;
+  --color-inset: #121316;
+
+  /* --- Hairlines --------------------------------------------------------- */
+  --color-line: #2a2c32;
+  --color-line-hi: #383b43;
+  --color-line-faint: #202228;
+
+  /* --- Typography -------------------------------------------------------- */
+  --color-fg: #fafafa;
+  --color-fg-muted: #a0a0ab;
+  --color-fg-subtle: #71717a;
+  --color-fg-faint: #52525b;
+
+  /* --- Atlas green ------------------------------------------------------- */
+  --color-atlas: #17c964;
+  --color-atlas-hi: #45d888;
+  --color-atlas-lo: #12a150;
+  --color-atlas-ink: #052e16;
+
+  /* --- Semantic (kept distinct from the brand accent) -------------------- */
+  --color-signal-warn: #e5a94d;
+  --color-signal-crit: #e5484d;
+  --color-signal-info: #6e8ba8;
+
+  /* --- Motion: the 250ms ceiling this app holds itself to ---------------- */
+  --ease-atlas: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 250ms;
+
+  /* --- Legacy ramp (still used by Landing/Login/Settings/PickCard) ------- */
+  --color-ink-950: #0a0d12;
+  --color-ink-900: #0e1218;
+  --color-ink-800: #131a22;
+  --color-ink-700: #1b2430;
+  --color-ink-600: #263241;
+  --color-ink-500: #3a4a5c;
+  --color-ink-400: #5b6b7d;
+  --color-ink-300: #8b98a6;
+  --color-ink-200: #c2ccd6;
+  --color-ink-100: #e6ebf0;
+  --color-ink-50: #f5f7f9;
+
+  --color-edge-600: #0f9d63;
+  --color-edge-500: #16c172;
+  --color-edge-400: #3fdb8f;
+  --color-edge-300: #7cebb4;
+
+  --color-warn-500: #e2b93b;
+  --color-danger-500: #e5484d;
+}
+
+/* ---------------------------------------------------------------------------
+   shadcn/ui variable contract, expressed in Atlas colors.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --radius: 0.75rem;
+
+  --background: #0f0f10;
+  --foreground: #fafafa;
+  --card: #17181c;
+  --card-foreground: #fafafa;
+  --popover: #1c1e23;
+  --popover-foreground: #fafafa;
+  --primary: #17c964;
+  --primary-foreground: #052e16;
+  --secondary: #1c1e23;
+  --secondary-foreground: #fafafa;
+  --muted: #1c1e23;
+  --muted-foreground: #a0a0ab;
+  --accent: #202329;
+  --accent-foreground: #fafafa;
+  --destructive: #e5484d;
+  --destructive-foreground: #fafafa;
+  --border: #2a2c32;
+  --input: #2a2c32;
+  --ring: #17c964;
+}
+
+/* The app already ships a light/dark/system ThemeProvider and a Settings page
+   that drives it. The spec for this shell is the dark palette above, so light
+   mode is kept working rather than dropped -- same tokens, inverted values. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --color-canvas: #f7f8f9;
+  --color-surface: #ffffff;
+  --color-surface-hi: #f4f5f7;
+  --color-surface-hover: #eceef1;
+  --color-inset: #f0f2f4;
+
+  --color-line: #e2e4e9;
+  --color-line-hi: #cfd2d9;
+  --color-line-faint: #eef0f3;
+
+  --color-fg: #101114;
+  --color-fg-muted: #5c5f6b;
+  --color-fg-subtle: #797d89;
+  --color-fg-faint: #9a9ea9;
+
+  --color-atlas: #12a150;
+  --color-atlas-hi: #0e8442;
+  --color-atlas-lo: #0e8442;
+  --color-atlas-ink: #ffffff;
+
+  --color-signal-warn: #9a6b10;
+  --color-signal-crit: #c23237;
+  --color-signal-info: #4a6b88;
+
+  --background: #f7f8f9;
+  --foreground: #101114;
+  --card: #ffffff;
+  --card-foreground: #101114;
+  --popover: #ffffff;
+  --popover-foreground: #101114;
+  --primary: #12a150;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #101114;
+  --muted: #f4f5f7;
+  --muted-foreground: #5c5f6b;
+  --accent: #eceef1;
+  --accent-foreground: #101114;
+  --border: #e2e4e9;
+  --input: #e2e4e9;
+  --ring: #12a150;
+
+  /* legacy ramp, inverted */
+  --color-ink-950: #f6f8f9;
+  --color-ink-900: #ffffff;
+  --color-ink-800: #eff3f5;
+  --color-ink-700: #e0e6ea;
+  --color-ink-600: #cfd8de;
+  --color-ink-500: #aebac3;
+  --color-ink-400: #8896a2;
+  --color-ink-300: #5d6b78;
+  --color-ink-200: #3a4753;
+  --color-ink-100: #1a2530;
+  --color-ink-50: #0a0d12;
+
+  --color-edge-600: #0a6b43;
+  --color-edge-500: #0f9d63;
+  --color-edge-400: #0b7d4e;
+  --color-edge-300: #0a6b43;
+
+  --color-warn-500: #9a7a10;
+  --color-danger-500: #c23237;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "salt";
+    transition:
+      background-color var(--duration-base) ease,
+      color var(--duration-base) ease;
+  }
+
+  /* Digits that sit in columns should not jitter as values update. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-atlas);
+    outline-offset: 2px;
+  }
+
+  :root[data-theme="light"] body {
+    --tw-shadow-color: transparent;
+  }
+}
+
+@layer utilities {
+  /* Thin scrollbars that read as part of the chrome rather than the OS. */
+  .scrollbar-atlas {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-hi) transparent;
+  }
+  .scrollbar-atlas::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-atlas::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-hi);
+    border-radius: 9999px;
+  }
+  .scrollbar-atlas::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
